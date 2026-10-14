@@ -101,24 +101,18 @@
   function initActiveNav() {
     var nav = $('.main-nav .navbar-nav');
     if (!nav) return;
-    var path = (window.location.pathname.split('/').pop() || 'index.html').toLowerCase();
-    var productPages = [
-      'products.html', 'extinguisher.html', 'hose-reel-drums.html',
-      'hose-boxes-and-fire-shaft-door.html', 'fire-hose.html', 'breeching-inlet.html',
-      'landing-valve.html', 'sprinkler.html', 'fire-hose-delivery-coupling.html',
-      'branch-pipe-nozzle.html'
-    ];
+    var path = window.location.pathname.toLowerCase();
     function activate(el) { if (el) el.classList.add('active'); }
-    var homeItem = nav.querySelector('a[href="index.html"]');
-    var aboutItem = nav.querySelector('a[href="about-us.html"]');
+    var homeItem = nav.querySelector('a[href="/"]');
+    var aboutItem = nav.querySelector('a[href="/pages/about-us.html"]');
     var dropdownItem = nav.querySelector('.nav-item.dropdown');
     var connectLink = nav.querySelector('.view-more-btn');
 
-    if (!path || path === 'index.html') {
+    if (path === '/' || path === '' || path.indexOf('/index.html') !== -1) {
       activate(homeItem && homeItem.parentElement);
-    } else if (path === 'contact-us.html') {
+    } else if (path.indexOf('/contact-us.html') !== -1) {
       activate(connectLink);
-    } else if (productPages.indexOf(path) !== -1) {
+    } else if (path.indexOf('/products/') !== -1 || path.indexOf('/pages/products.html') !== -1) {
       activate(dropdownItem);
     } else {
       activate(aboutItem && aboutItem.parentElement);

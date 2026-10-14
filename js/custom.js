@@ -210,6 +210,7 @@
           .then(function (data) {
             if (data && data.success) {
               setStatus(status, data.message || 'Thank you! We will contact you shortly.', 'success');
+              if (typeof window.ronakTrackLead === 'function') { window.ronakTrackLead('enquiry'); }
               form.reset();
             } else {
               setStatus(status, (data && data.message) || 'Sorry, something went wrong. Please try again.', 'error');

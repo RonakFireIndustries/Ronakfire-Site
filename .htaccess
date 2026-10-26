@@ -16,7 +16,7 @@ AddType video/mp4 .mp4
 Options -Indexes
 
 # --- Block access to backups, databases and other non-public files ---
-<FilesMatch "\.(zip|rar|7z|tar|gz|sql|bak|old|orig|log|ini|env|sh|dist|map)$">
+<FilesMatch "\.(zip|rar|7z|tar|gz|sql|sqlite|db|bak|old|orig|log|ini|env|sh|dist|map)$">
   Require all denied
 </FilesMatch>
 <FilesMatch "^(\.htaccess|\.htpasswd|\.env|\.git.*|composer\.(json|lock)|package(-lock)?\.json|README.*|LICENSE.*)$">
@@ -57,28 +57,43 @@ Options -Indexes
 <IfModule mod_rewrite.c>
   RewriteEngine On
 
+  # Private application directories and local configuration.
+  RewriteRule ^(?:app|bin|database|docs|legacy|storage)(?:/|$) - [F,L,NC]
+  RewriteRule ^config\.local\.php$ - [F,L,NC]
+  # Local-only tooling and reference config.
+  RewriteRule ^(?:dev-router\.php|config\.example\.php)$ - [F,L,NC]
+
+  # Block VCS metadata, editor folders and dotfiles. Keep .well-known available
+  # for ACME/SSL validation.
+  RewriteRule (^|/)\.(?!well-known(?:/|$)) - [F,L,NC]
+
+  # --- 301 redirects: legacy static pages -> live storefront pages ---
+  # The old HTML files now live in /legacy and are never served directly.
   RewriteRule ^index\.html$ / [R=301,L]
+  RewriteRule ^(?:pages/)?about-us\.html$ /about [R=301,L]
+  RewriteRule ^(?:pages/)?contact-us\.html$ /contact [R=301,L]
+  RewriteRule ^(?:pages/)?products\.html$ /catalog [R=301,L]
+  RewriteRule ^(?:pages/)?privacy-policy\.html$ /privacy [R=301,L]
+  RewriteRule ^(?:pages/)?refund-cancellation-policy\.html$ /refund-policy [R=301,L]
+  RewriteRule ^(?:pages/)?testimonial\.html$ /about#clients [R=301,L]
+  RewriteRule ^pages/404\.html$ / [R=301,L]
 
-  RewriteRule ^about-us\.html$ /pages/about-us.html [R=301,L]
-  RewriteRule ^contact-us\.html$ /pages/contact-us.html [R=301,L]
-  RewriteRule ^products\.html$ /pages/products.html [R=301,L]
-  RewriteRule ^privacy-policy\.html$ /pages/privacy-policy.html [R=301,L]
-  RewriteRule ^refund-cancellation-policy\.html$ /pages/refund-cancellation-policy.html [R=301,L]
-  RewriteRule ^testimonial\.html$ /pages/testimonial.html [R=301,L]
+  RewriteRule ^(?:products/)?(extinguisher|hose-reel-drums|hose-boxes-and-fire-shaft-door|fire-hose|breeching-inlet|landing-valve|sprinkler|fire-hose-delivery-coupling|branch-pipe-nozzle)\.html$ /catalog/$1 [R=301,L]
 
-  RewriteRule ^extinguisher\.html$ /products/extinguisher.html [R=301,L]
-  RewriteRule ^hose-reel-drums\.html$ /products/hose-reel-drums.html [R=301,L]
-  RewriteRule ^hose-boxes-and-fire-shaft-door\.html$ /products/hose-boxes-and-fire-shaft-door.html [R=301,L]
-  RewriteRule ^fire-hose\.html$ /products/fire-hose.html [R=301,L]
-  RewriteRule ^breeching-inlet\.html$ /products/breeching-inlet.html [R=301,L]
-  RewriteRule ^landing-valve\.html$ /products/landing-valve.html [R=301,L]
-  RewriteRule ^sprinkler\.html$ /products/sprinkler.html [R=301,L]
-  RewriteRule ^fire-hose-delivery-coupling\.html$ /products/fire-hose-delivery-coupling.html [R=301,L]
-  RewriteRule ^branch-pipe-nozzle\.html$ /products/branch-pipe-nozzle.html [R=301,L]
+  # --- Trade store front controller ---
+  # Real files and directories keep being served directly. Store URLs are
+  # handed to store.php, which resolves the route from REQUEST_URI.
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule ^$ store.php [L,QSA]
+
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule ^(shop|catalog|product|cart|checkout|order|account|quote|login|logout|admin|about|contact|privacy|refund-policy)(/.*)?$ store.php [L,QSA]
 </IfModule>
 
 # --- Custom error page ---
-ErrorDocument 404 /pages/404.html
+ErrorDocument 404 /store.php
 
 # --- Optional: force HTTPS. Uncomment once SSL is confirmed for every host. ---
 # <IfModule mod_rewrite.c>

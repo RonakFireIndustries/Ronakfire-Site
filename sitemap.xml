@@ -6,77 +6,225 @@
 
 <url>
   <loc>https://ronakfire.com/</loc>
-  <lastmod>2026-10-14</lastmod>
+  <lastmod>2026-10-26</lastmod>
   <priority>1.00</priority>
 </url>
 <url>
-  <loc>https://ronakfire.com/pages/about-us.html</loc>
-  <lastmod>2026-10-14</lastmod>
-  <priority>0.80</priority>
-</url>
-<url>
-  <loc>https://ronakfire.com/pages/products.html</loc>
-  <lastmod>2026-10-14</lastmod>
+  <loc>https://ronakfire.com/shop</loc>
+  <lastmod>2026-10-26</lastmod>
   <priority>0.90</priority>
 </url>
 <url>
-  <loc>https://ronakfire.com/products/extinguisher.html</loc>
-  <lastmod>2026-10-14</lastmod>
+  <loc>https://ronakfire.com/catalog</loc>
+  <lastmod>2026-10-26</lastmod>
+  <priority>0.90</priority>
+</url>
+<url>
+  <loc>https://ronakfire.com/about</loc>
+  <lastmod>2026-10-26</lastmod>
   <priority>0.80</priority>
 </url>
 <url>
-  <loc>https://ronakfire.com/products/hose-reel-drums.html</loc>
-  <lastmod>2026-10-14</lastmod>
+  <loc>https://ronakfire.com/contact</loc>
+  <lastmod>2026-10-26</lastmod>
+  <priority>0.70</priority>
+</url>
+
+<url>
+  <loc>https://ronakfire.com/catalog/extinguisher</loc>
+  <lastmod>2026-10-26</lastmod>
   <priority>0.80</priority>
 </url>
 <url>
-  <loc>https://ronakfire.com/products/hose-boxes-and-fire-shaft-door.html</loc>
-  <lastmod>2026-10-14</lastmod>
+  <loc>https://ronakfire.com/catalog/hose-reel-drums</loc>
+  <lastmod>2026-10-26</lastmod>
   <priority>0.80</priority>
 </url>
 <url>
-  <loc>https://ronakfire.com/products/fire-hose.html</loc>
-  <lastmod>2026-10-14</lastmod>
+  <loc>https://ronakfire.com/catalog/hose-boxes-and-fire-shaft-door</loc>
+  <lastmod>2026-10-26</lastmod>
   <priority>0.80</priority>
 </url>
 <url>
-  <loc>https://ronakfire.com/products/breeching-inlet.html</loc>
-  <lastmod>2026-10-14</lastmod>
+  <loc>https://ronakfire.com/catalog/fire-hose</loc>
+  <lastmod>2026-10-26</lastmod>
   <priority>0.80</priority>
 </url>
 <url>
-  <loc>https://ronakfire.com/products/landing-valve.html</loc>
-  <lastmod>2026-10-14</lastmod>
+  <loc>https://ronakfire.com/catalog/breeching-inlet</loc>
+  <lastmod>2026-10-26</lastmod>
   <priority>0.80</priority>
 </url>
 <url>
-  <loc>https://ronakfire.com/products/sprinkler.html</loc>
-  <lastmod>2026-10-14</lastmod>
+  <loc>https://ronakfire.com/catalog/landing-valve</loc>
+  <lastmod>2026-10-26</lastmod>
   <priority>0.80</priority>
 </url>
 <url>
-  <loc>https://ronakfire.com/products/fire-hose-delivery-coupling.html</loc>
-  <lastmod>2026-10-14</lastmod>
+  <loc>https://ronakfire.com/catalog/sprinkler</loc>
+  <lastmod>2026-10-26</lastmod>
   <priority>0.80</priority>
 </url>
 <url>
-  <loc>https://ronakfire.com/products/branch-pipe-nozzle.html</loc>
-  <lastmod>2026-10-14</lastmod>
+  <loc>https://ronakfire.com/catalog/fire-hose-delivery-coupling</loc>
+  <lastmod>2026-10-26</lastmod>
   <priority>0.80</priority>
 </url>
 <url>
-  <loc>https://ronakfire.com/pages/contact-us.html</loc>
-  <lastmod>2026-10-14</lastmod>
+  <loc>https://ronakfire.com/catalog/branch-pipe-nozzle</loc>
+  <lastmod>2026-10-26</lastmod>
+  <priority>0.80</priority>
+</url>
+
+<url>
+  <loc>https://ronakfire.com/product/abc-dry-powder-fire-extinguisher</loc>
+  <lastmod>2026-10-26</lastmod>
   <priority>0.70</priority>
 </url>
 <url>
-  <loc>https://ronakfire.com/pages/privacy-policy.html</loc>
-  <lastmod>2026-10-14</lastmod>
+  <loc>https://ronakfire.com/product/co2-fire-extinguisher</loc>
+  <lastmod>2026-10-26</lastmod>
+  <priority>0.70</priority>
+</url>
+<url>
+  <loc>https://ronakfire.com/product/water-type-fire-extinguisher</loc>
+  <lastmod>2026-10-26</lastmod>
+  <priority>0.70</priority>
+</url>
+<url>
+  <loc>https://ronakfire.com/product/foam-type-fire-extinguisher</loc>
+  <lastmod>2026-10-26</lastmod>
+  <priority>0.70</priority>
+</url>
+<url>
+  <loc>https://ronakfire.com/product/trolley-type-fire-extinguisher</loc>
+  <lastmod>2026-10-26</lastmod>
+  <priority>0.70</priority>
+</url>
+<url>
+  <loc>https://ronakfire.com/product/modular-automatic-fire-extinguisher</loc>
+  <lastmod>2026-10-26</lastmod>
+  <priority>0.70</priority>
+</url>
+<url>
+  <loc>https://ronakfire.com/product/cartridge-type-fire-extinguisher</loc>
+  <lastmod>2026-10-26</lastmod>
+  <priority>0.70</priority>
+</url>
+<url>
+  <loc>https://ronakfire.com/product/regular-hose-reel-drum</loc>
+  <lastmod>2026-10-26</lastmod>
+  <priority>0.70</priority>
+</url>
+<url>
+  <loc>https://ronakfire.com/product/chrome-elbow-hose-reel-drum</loc>
+  <lastmod>2026-10-26</lastmod>
+  <priority>0.70</priority>
+</url>
+<url>
+  <loc>https://ronakfire.com/product/aluminium-elbow-hose-reel-drum</loc>
+  <lastmod>2026-10-26</lastmod>
+  <priority>0.70</priority>
+</url>
+<url>
+  <loc>https://ronakfire.com/product/isi-hose-reel-drum</loc>
+  <lastmod>2026-10-26</lastmod>
+  <priority>0.70</priority>
+</url>
+<url>
+  <loc>https://ronakfire.com/product/s-type-hose-reel-drum</loc>
+  <lastmod>2026-10-26</lastmod>
+  <priority>0.70</priority>
+</url>
+<url>
+  <loc>https://ronakfire.com/product/aluminium-hose-reel-drum</loc>
+  <lastmod>2026-10-26</lastmod>
+  <priority>0.70</priority>
+</url>
+<url>
+  <loc>https://ronakfire.com/product/single-door-hose-box</loc>
+  <lastmod>2026-10-26</lastmod>
+  <priority>0.70</priority>
+</url>
+<url>
+  <loc>https://ronakfire.com/product/double-door-hose-box</loc>
+  <lastmod>2026-10-26</lastmod>
+  <priority>0.70</priority>
+</url>
+<url>
+  <loc>https://ronakfire.com/product/fire-shaft-door</loc>
+  <lastmod>2026-10-26</lastmod>
+  <priority>0.70</priority>
+</url>
+<url>
+  <loc>https://ronakfire.com/product/rrl-fire-hose-type-a</loc>
+  <lastmod>2026-10-26</lastmod>
+  <priority>0.70</priority>
+</url>
+<url>
+  <loc>https://ronakfire.com/product/two-way-breeching-inlet</loc>
+  <lastmod>2026-10-26</lastmod>
+  <priority>0.70</priority>
+</url>
+<url>
+  <loc>https://ronakfire.com/product/four-way-breeching-inlet</loc>
+  <lastmod>2026-10-26</lastmod>
+  <priority>0.70</priority>
+</url>
+<url>
+  <loc>https://ronakfire.com/product/single-outlet-landing-valve</loc>
+  <lastmod>2026-10-26</lastmod>
+  <priority>0.70</priority>
+</url>
+<url>
+  <loc>https://ronakfire.com/product/double-outlet-landing-valve</loc>
+  <lastmod>2026-10-26</lastmod>
+  <priority>0.70</priority>
+</url>
+<url>
+  <loc>https://ronakfire.com/product/pendent-sprinkler</loc>
+  <lastmod>2026-10-26</lastmod>
+  <priority>0.70</priority>
+</url>
+<url>
+  <loc>https://ronakfire.com/product/upright-sprinkler</loc>
+  <lastmod>2026-10-26</lastmod>
+  <priority>0.70</priority>
+</url>
+<url>
+  <loc>https://ronakfire.com/product/sidewall-sprinkler</loc>
+  <lastmod>2026-10-26</lastmod>
+  <priority>0.70</priority>
+</url>
+<url>
+  <loc>https://ronakfire.com/product/male-female-instantaneous-coupling</loc>
+  <lastmod>2026-10-26</lastmod>
+  <priority>0.70</priority>
+</url>
+<url>
+  <loc>https://ronakfire.com/product/branch-pipe-with-nozzle</loc>
+  <lastmod>2026-10-26</lastmod>
+  <priority>0.70</priority>
+</url>
+<url>
+  <loc>https://ronakfire.com/product/hydrant-hose-cabinet-kit</loc>
+  <lastmod>2026-10-26</lastmod>
+  <priority>0.70</priority>
+</url>
+<url>
+  <loc>https://ronakfire.com/product/first-aid-fire-point-kit</loc>
+  <lastmod>2026-10-26</lastmod>
+  <priority>0.70</priority>
+</url>
+
+<url>
+  <loc>https://ronakfire.com/privacy</loc>
+  <lastmod>2026-10-26</lastmod>
   <priority>0.30</priority>
 </url>
 <url>
-  <loc>https://ronakfire.com/pages/refund-cancellation-policy.html</loc>
-  <lastmod>2026-10-14</lastmod>
+  <loc>https://ronakfire.com/refund-policy</loc>
+  <lastmod>2026-10-26</lastmod>
   <priority>0.30</priority>
 </url>
 

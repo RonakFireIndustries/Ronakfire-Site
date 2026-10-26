@@ -6,3 +6,13 @@ Desktop.ini
 
 # Dependencies (not used by this static site, kept for safety)
 node_modules/
+
+# Local application configuration and runtime data
+config.local.php
+storage/*
+!storage/.htaccess
+
+# Local database dumps and backups
+*.sqlite
+*.sqlite3
+*.db

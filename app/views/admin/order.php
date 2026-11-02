@@ -113,6 +113,18 @@ $customerName = $order['company_name'] ?: ($billing['company_name'] ?? 'Customer
                                 <?php endforeach; ?>
                             </select>
                         </label>
+                        <label class="admin-field">
+                            <span>Courier</span>
+                            <input type="text" name="courier_name" value="<?= e($order['courier_name'] ?? '') ?>">
+                        </label>
+                        <label class="admin-field">
+                            <span>Tracking No.</span>
+                            <input type="text" name="tracking_no" value="<?= e($order['tracking_no'] ?? '') ?>">
+                        </label>
+                        <label class="admin-field">
+                            <span>Tracking URL</span>
+                            <input type="url" name="tracking_url" value="<?= e($order['tracking_url'] ?? '') ?>">
+                        </label>
                         <button class="admin-btn admin-btn--primary" type="submit">Save status</button>
                     </form>
 
@@ -180,6 +192,9 @@ $customerName = $order['company_name'] ?: ($billing['company_name'] ?? 'Customer
                         <?php if (!empty($shipping['address_line2'])): ?><?= e($shipping['address_line2']) ?><br><?php endif; ?>
                         <?= e($shipping['city'] ?? '') ?>, <?= e($shipping['state'] ?? '') ?> <?= e($shipping['pincode'] ?? '') ?></p>
                     <p><?= e($shipping['phone'] ?? '') ?></p>
+                    <?php if (!empty($order['tracking_no'])): ?>
+                        <p style="margin-top:8px;"><strong>Tracking:</strong> <?= e($order['courier_name'] ?: '—') ?> / <?= e($order['tracking_no']) ?><?php if (!empty($order['tracking_url'])): ?> · <a href="<?= e($order['tracking_url']) ?>" target="_blank">Track</a><?php endif; ?></p>
+                    <?php endif; ?>
                 </div>
             </div>
         </section>

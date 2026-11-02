@@ -2,7 +2,7 @@
 $navCategories = App\Catalog::categories();
 $navCustomer = current_customer();
 $navCartCount = cart_count();
-$announcement = (string) setting('announcement', 'Manufacturer-direct fire protection · GST invoices · Pan-India dispatch');
+$announcement = (string) setting('announcement', 'Manufacturer · Pan-India dispatch');
 $phone = (string) setting('support_phone', config('store.support_phone'));
 $phoneHref = (string) setting('support_phone_href', config('store.support_phone_href'));
 $activeNav = $activeNav ?? '';
@@ -21,41 +21,16 @@ $activeNav = $activeNav ?? '';
 <header class="site-header" id="siteHeader">
     <div class="container site-header__inner">
         <a class="brand" href="/" aria-label="Ronak Fire home">
-            <img src="/images/logo.png" alt="Ronak Fire India Pvt. Ltd." width="176" height="46">
-            <span class="brand__tag">Fire store</span>
+            <img src="/images/logo.png" alt="Ronak Fire India Pvt. Ltd." width="10" >
         </a>
 
         <nav class="primary-nav" aria-label="Primary">
-            <a class="primary-nav__link <?= $activeNav === '/shop' ? 'is-active' : '' ?>" href="/shop">Shop</a>
-            <div class="nav-dropdown" data-dropdown>
-                <button class="primary-nav__link nav-dropdown__toggle <?= $activeNav === '/catalog' ? 'is-active' : '' ?>" type="button" aria-expanded="false" data-dropdown-toggle>
-                    Products <?= icon('chevron-down') ?>
-                </button>
-                <div class="mega" data-dropdown-panel>
-                    <div class="mega__grid">
-                        <?php foreach ($navCategories as $category): ?>
-                            <a class="mega__item" href="/catalog/<?= e($category['slug']) ?>">
-                                <span class="mega__thumb">
-                                    <?php if (!empty($category['image'])): ?>
-                                        <img src="<?= e($category['image']) ?>" alt="" loading="lazy">
-                                    <?php endif; ?>
-                                </span>
-                                <span>
-                                    <strong><?= e($category['short_name'] ?: $category['name']) ?></strong>
-                                    <small><?= e($category['tagline'] ?? '') ?></small>
-                                </span>
-                            </a>
-                        <?php endforeach; ?>
-                    </div>
-                    <div class="mega__footer">
-                        <a class="mega__all" href="/catalog">View the full catalog <?= icon('arrow-right') ?></a>
-                        <span>Can’t find a specification? <a href="/quote">Send it to our engineers</a>.</span>
-                    </div>
-                </div>
-            </div>
-            <a class="primary-nav__link <?= $activeNav === '/configure' ? 'is-active' : '' ?>" href="/catalog?configurable=1">Configure</a>
-            <a class="primary-nav__link <?= $activeNav === '/quote' ? 'is-active' : '' ?>" href="/quote">Request quote</a>
-            <a class="primary-nav__link <?= $activeNav === 'about' ? 'is-active' : '' ?>" href="/about">Company</a>
+            <a class="primary-nav__link <?php echo ($activeNav === '/' ? 'is-active' : ''); ?>" href="/">Home</a>
+            <a class="primary-nav__link <?php echo ($activeNav === '/shop' ? 'is-active' : ''); ?>" href="/shop">Shop</a>
+            <a class="primary-nav__link <?php echo ($activeNav === '/about' ? 'is-active' : ''); ?>" href="/about">About</a>
+            <a class="primary-nav__link <?php echo ($activeNav === '/contact' ? 'is-active' : ''); ?>" href="/contact">Contact</a>
+            <a class="primary-nav__link <?php echo ($activeNav === '/catalog' ? 'is-active' : ''); ?>" href="/catalog">Products</a>
+            <a class="primary-nav__link <?php echo ($activeNav === '/quote' ? 'is-active' : ''); ?>" href="/quote">Request quote</a>
         </nav>
 
         <div class="header-actions">
@@ -64,8 +39,8 @@ $activeNav = $activeNav ?? '';
             <a class="account-chip" href="<?= $navCustomer ? '/account' : '/login' ?>">
                 <span class="account-chip__icon"><?= icon('user') ?></span>
                 <span class="account-chip__text">
-                    <small><?= $navCustomer ? e($navCustomer['customer_code'] ?: 'Trade account') : 'B2B pricing' ?></small>
-                    <strong><?= $navCustomer ? e($navCustomer['company_name']) : 'Dealer login' ?></strong>
+                    <small><?= $navCustomer ? e($navCustomer['customer_code'] ?: 'Trade account') : '' ?></small>
+                    <strong><?= $navCustomer ? e($navCustomer['company_name']) : 'Login' ?></strong>
                 </span>
             </a>
 
@@ -98,7 +73,7 @@ $activeNav = $activeNav ?? '';
             <a href="/catalog?configurable=1">Configure a product <span>Made to spec</span></a>
             <a href="/quote">Request a quote <span>Send drawings</span></a>
             <a href="/about">About Ronak Fire <span></span></a>
-            <a href="/contact">Contact sales <span></span></a>
+            <a href="/contact">Contact <span></span></a>
         </nav>
         <div class="mobile-nav__categories">
             <p class="eyebrow">Shop by category</p>

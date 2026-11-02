@@ -77,6 +77,8 @@ Options -Indexes
   RewriteRule ^(?:pages/)?refund-cancellation-policy\.html$ /refund-policy [R=301,L]
   RewriteRule ^(?:pages/)?testimonial\.html$ /about#clients [R=301,L]
   RewriteRule ^pages/404\.html$ / [R=301,L]
+  RewriteRule ^product-details\.html$ /catalog [R=301,L]
+  RewriteRule ^category\.html$ /catalog [R=301,L]
 
   RewriteRule ^(?:products/)?(extinguisher|hose-reel-drums|hose-boxes-and-fire-shaft-door|fire-hose|breeching-inlet|landing-valve|sprinkler|fire-hose-delivery-coupling|branch-pipe-nozzle)\.html$ /catalog/$1 [R=301,L]
 

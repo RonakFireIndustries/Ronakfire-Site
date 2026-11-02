@@ -74,6 +74,8 @@ if ($catalogCount > 0 && !$forceSeed) {
         $db->pdo()->exec('DELETE FROM option_values');
         $db->pdo()->exec('DELETE FROM option_groups');
         $db->pdo()->exec('DELETE FROM cart_items');
+        try { $db->pdo()->exec('DELETE FROM order_items'); } catch (Throwable $e) {}
+        try { $db->pdo()->exec('DELETE FROM orders'); } catch (Throwable $e) {}
         $db->pdo()->exec('DELETE FROM products');
         $db->pdo()->exec('DELETE FROM categories');
     }
@@ -190,9 +192,9 @@ if ($catalogCount > 0 && !$forceSeed) {
     }
 
     foreach ($seed['settings'] as $key => $value) {
-        $existing = $db->one('SELECT key FROM settings WHERE key = ?', [$key]);
+        $existing = $db->one('SELECT `key` FROM settings WHERE `key` = ?', [$key]);
         if ($existing) {
-            $db->update('settings', ['value' => $value], 'key = :key', ['key' => $key]);
+            $db->update('settings', ['value' => $value], '`key` = :key', ['key' => $key]);
         } else {
             $db->insert('settings', ['key' => $key, 'value' => $value]);
         }

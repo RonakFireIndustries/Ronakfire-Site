@@ -1381,7 +1381,7 @@ return [
             'slug' => 'hydrant-hose-cabinet-kit',
             'name' => 'Hydrant Hose Cabinet Kit',
             'sku' => 'RF-KIT-HYDRANT',
-            'type' => 'bundle',
+            'type' => 'configurable',
             'short' => 'Double-door hose cabinet supplied with two 15 m RRL hoses and a branch pipe with nozzle.',
             'description' => 'A complete first-aid hydrant point in one order: a double-door hose box, two 15 m RRL hoses and one 63 mm branch pipe with nozzle. Supplied as a kit for project scheduling.',
             'specs' => [
@@ -1402,10 +1402,19 @@ return [
             'warranty' => '12-month warranty',
             'featured' => 1,
             'sort' => 4,
-            'bundles' => [
-                ['slug' => 'double-door-hose-box', 'qty' => 1],
-                ['slug' => 'rrl-fire-hose-type-a', 'qty' => 2],
-                ['slug' => 'branch-pipe-with-nozzle', 'qty' => 1],
+            'groups' => [
+                [
+                    'name' => 'Finish',
+                    'slug' => 'finish',
+                    'type' => 'radio',
+                    'required' => 1,
+                    'help' => 'Fire red is standard. Stainless steel and custom colours are made to order.',
+                    'values' => [
+                        ['label' => 'Powder-coated fire red', 'delta' => 0, 'sku' => 'RED', 'default' => 1],
+                        ['label' => 'Stainless steel', 'delta' => 350000, 'sku' => 'SS'],
+                        ['label' => 'Custom RAL colour', 'delta' => 95000, 'sku' => 'RAL'],
+                    ],
+                ],
             ],
         ],
         [
@@ -1413,7 +1422,7 @@ return [
             'slug' => 'first-aid-fire-point-kit',
             'name' => 'First Aid Fire Point Kit',
             'sku' => 'RF-KIT-FIRST-AID',
-            'type' => 'bundle',
+            'type' => 'configurable',
             'short' => 'Single-door hose cabinet with one 15 m RRL hose and a branch pipe with nozzle.',
             'description' => 'A compact first-aid fire point for smaller floors and tenant areas: single-door hose box, one 15 m RRL hose and one branch pipe with nozzle.',
             'specs' => [
@@ -1434,10 +1443,19 @@ return [
             'warranty' => '12-month warranty',
             'featured' => 0,
             'sort' => 5,
-            'bundles' => [
-                ['slug' => 'single-door-hose-box', 'qty' => 1],
-                ['slug' => 'rrl-fire-hose-type-a', 'qty' => 1],
-                ['slug' => 'branch-pipe-with-nozzle', 'qty' => 1],
+            'groups' => [
+                [
+                    'name' => 'Finish',
+                    'slug' => 'finish',
+                    'type' => 'radio',
+                    'required' => 1,
+                    'help' => 'Fire red is standard. Stainless steel and custom colours are made to order.',
+                    'values' => [
+                        ['label' => 'Powder-coated fire red', 'delta' => 0, 'sku' => 'RED', 'default' => 1],
+                        ['label' => 'Stainless steel', 'delta' => 350000, 'sku' => 'SS'],
+                        ['label' => 'Custom RAL colour', 'delta' => 95000, 'sku' => 'RAL'],
+                    ],
+                ],
             ],
         ],
     ],

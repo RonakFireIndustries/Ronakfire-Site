@@ -9,6 +9,9 @@
         <h2>Customers</h2>
         <p>Trade accounts mirrored from the customer portal. Pricing tiers and discounts are controlled here.</p>
     </div>
+    <div class="admin-page-head__actions">
+        <a class="admin-btn" href="/admin/customers/new"><?= icon('user-plus') ?> Create customer</a>
+    </div>
 </div>
 
 <form class="admin-filters" action="/admin/customers" method="get">

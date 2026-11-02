@@ -32,16 +32,9 @@ $cardUrl = '/product/' . $product['slug'];
         <?php endif; ?>
         <div class="product-card__footer">
             <div class="product-card__price">
-                <?php if (is_logged_in()): ?>
-                    <small>From</small>
-                    <strong><?= money($cardPrice) ?></strong>
-                    <span>+ <?= gst_label((int) $product['gst_rate_bp']) ?> GST</span>
-                <?php else: ?>
-                    <small><?= icon('lock') ?> Trade price</small>
-                    <a href="/login?return=<?= urlencode($cardUrl) ?>">Sign in to view</a>
-                <?php endif; ?>
+                <a class="product-card__action" href="<?= e($cardUrl) ?>"
+                    aria-label="View <?= e($product['name']) ?>"><?= icon('arrow-right') ?></a>
             </div>
-            <a class="product-card__action" href="<?= e($cardUrl) ?>" aria-label="View <?= e($product['name']) ?>"><?= icon('arrow-right') ?></a>
         </div>
     </div>
 </article>

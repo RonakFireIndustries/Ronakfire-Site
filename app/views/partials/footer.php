@@ -44,7 +44,7 @@ $footerAddress = (string) config('store.address');
             <div class="site-footer__column site-footer__contact">
                 <h2>Talk to sales</h2>
                 <a class="site-footer__phone" href="tel:<?= e($footerPhoneHref) ?>"><?= icon('phone') ?><?= e($footerPhone) ?></a>
-                <a href="mailto:<?= e($footerEmail) ?>"><?= icon('mail') ?><?= e($footerEmail) ?></a>
+                <a class="site-footer__email" href="mailto:<?= e($footerEmail) ?>"><?= icon('mail') ?><?= e($footerEmail) ?></a>
                 <p><?= icon('package') ?><span><?= e($footerAddress) ?></span></p>
                 <span class="site-footer__hours"><?= icon('clock') ?> Mon–Sat, 9:30 am – 6:30 pm IST</span>
             </div>

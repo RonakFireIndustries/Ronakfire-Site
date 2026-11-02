@@ -75,10 +75,11 @@ final class Database
     {
         $columns = array_keys($data);
         $placeholders = array_map(static fn ($c) => ':' . $c, $columns);
+        $quoted = array_map(static fn ($c) => '`' . $c . '`', $columns);
         $sql = sprintf(
             'INSERT INTO %s (%s) VALUES (%s)',
             $table,
-            implode(', ', $columns),
+            implode(', ', $quoted),
             implode(', ', $placeholders)
         );
         $this->run($sql, $data);
@@ -89,7 +90,7 @@ final class Database
     {
         $sets = [];
         foreach (array_keys($data) as $column) {
-            $sets[] = $column . ' = :' . $column;
+            $sets[] = '`' . $column . '` = :' . $column;
         }
         $sql = sprintf('UPDATE %s SET %s WHERE %s', $table, implode(', ', $sets), $where);
         return $this->run($sql, array_merge($data, $whereParams))->rowCount();

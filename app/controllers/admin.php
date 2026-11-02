@@ -742,7 +742,20 @@ function ctrl_admin_order_status(array $params): void
         redirect('/admin/orders/' . $id);
     }
 
+    $oldStatus = (string) $order['status'];
     $data = ['status' => $status, 'updated_at' => date('Y-m-d H:i:s')];
+
+    // Optional tracking fields
+    if (array_key_exists('courier_name', $_POST)) {
+        $data['courier_name'] = trim((string) post('courier_name', '')) === '' ? null : trim((string) post('courier_name', ''));
+    }
+    if (array_key_exists('tracking_no', $_POST)) {
+        $data['tracking_no'] = trim((string) post('tracking_no', '')) === '' ? null : trim((string) post('tracking_no', ''));
+    }
+    if (array_key_exists('tracking_url', $_POST)) {
+        $data['tracking_url'] = trim((string) post('tracking_url', '')) === '' ? null : trim((string) post('tracking_url', ''));
+    }
+
     $timeColumns = [
         'confirmed' => 'confirmed_at',
         'invoiced' => 'invoiced_at',
@@ -754,6 +767,17 @@ function ctrl_admin_order_status(array $params): void
         $data[$timeColumns[$status]] = date('Y-m-d H:i:s');
     }
     db()->update('orders', $data, 'id = :id', ['id' => $id]);
+
+    if ($oldStatus !== $status) {
+        try {
+            require_once APP_PATH . '/controllers/store.php';
+            if (function_exists('notify_order_status_changed')) {
+                notify_order_status_changed($id, $oldStatus, $status);
+            }
+        } catch (Throwable $e) {
+            error_log('Status notification error: ' . $e->getMessage());
+        }
+    }
 
     flash('success', 'Order marked as ' . strtolower(order_status_label($status)) . '.');
     redirect('/admin/orders/' . $id);
@@ -780,6 +804,61 @@ function ctrl_admin_order_freight(array $params): void
     ], 'id = :id', ['id' => $id]);
 
     flash('success', 'Freight updated. The order total is now ' . money($grand) . '.');
+    redirect('/admin/orders/' . $id);
+}
+
+function ctrl_admin_order_tracking(array $params): void
+{
+    Auth::requireAdmin();
+    require_csrf();
+
+    $id    = admin_url_id($params);
+    $order = $id > 0 ? db()->one('SELECT * FROM orders WHERE id = ?', [$id]) : null;
+    if (!$order) {
+        flash('error', 'Order not found.');
+        redirect('/admin/orders');
+    }
+
+    $courierName = trim((string) post('courier_name', ''));
+    $trackingNo  = trim((string) post('tracking_no', ''));
+    $trackingUrl = trim((string) post('tracking_url', ''));
+
+    if ($trackingNo === '') {
+        flash('error', 'Enter a tracking / docket number.');
+        redirect('/admin/orders/' . $id);
+    }
+
+    db()->update('orders', [
+        'courier_name' => $courierName,
+        'tracking_no'  => $trackingNo,
+        'tracking_url' => $trackingUrl,
+        'updated_at'   => date('Y-m-d H:i:s'),
+    ], 'id = :id', ['id' => $id]);
+
+    // Notify customer by email (best effort)
+    if (config('store.notify_orders', false)) {
+        try {
+            $customer = db()->one('SELECT * FROM customers WHERE id = ?', [$order['customer_id']]);
+            if ($customer && $customer['email']) {
+                $trackLine = $trackingUrl ? "\nTrack at: " . $trackingUrl : '';
+                $body = "Your order {$order['order_no']} has been dispatched.\n\n"
+                    . 'Courier: ' . ($courierName ?: 'To be advised') . "\n"
+                    . 'Docket / tracking no: ' . $trackingNo
+                    . $trackLine . "\n\n"
+                    . 'View your order: ' . abs_url('/order/' . $order['order_no']);
+                @mail(
+                    $customer['email'],
+                    'Your Ronak Fire order ' . $order['order_no'] . ' has been dispatched',
+                    $body,
+                    'From: ' . config('store.support_email') . "\r\nContent-Type: text/plain; charset=UTF-8"
+                );
+            }
+        } catch (Throwable $e) {
+            error_log('Dispatch notification failed: ' . $e->getMessage());
+        }
+    }
+
+    flash('success', 'Tracking details saved and customer notified.');
     redirect('/admin/orders/' . $id);
 }
 
@@ -911,6 +990,112 @@ function ctrl_admin_customer_save(array $params): void
     redirect('/admin/customers/' . $id);
 }
 
+function ctrl_admin_customer_new(): void
+{
+    Auth::requireAdmin();
+    $stateList = ['Andhra Pradesh','Arunachal Pradesh','Assam','Bihar','Chhattisgarh','Goa','Gujarat','Haryana','Himachal Pradesh','Jharkhand','Karnataka','Kerala','Madhya Pradesh','Maharashtra','Manipur','Meghalaya','Mizoram','Nagaland','Odisha','Punjab','Rajasthan','Sikkim','Tamil Nadu','Telangana','Tripura','Uttar Pradesh','Uttarakhand','West Bengal','Andaman and Nicobar Islands','Chandigarh','Dadra and Nagar Haveli and Daman and Diu','Delhi','Jammu and Kashmir','Ladakh','Lakshadweep','Puducherry'];
+    admin_render('customer-new', [
+        'pageTitle' => 'Create customer account | Ronak Fire admin',
+        'adminNav' => 'customers',
+        'adminTitle' => 'Create customer',
+        'states' => $stateList,
+        'customer' => [
+            'company_name' => '',
+            'contact_name' => '',
+            'email' => '',
+            'phone' => '',
+            'gstin' => '',
+            'address_line1' => '',
+            'address_line2' => '',
+            'city' => '',
+            'state' => '',
+            'pincode' => '',
+            'price_tier' => 'standard',
+            'discount_percent' => 0,
+            'credit_days' => 0,
+            'credit_limit' => '0',
+            'is_active' => 1,
+        ],
+    ]);
+}
+
+function ctrl_admin_customer_create(): void
+{
+    Auth::requireAdmin();
+    require_csrf();
+
+    $company = trim((string) post('company_name', ''));
+    if ($company === '') {
+        flash('error', 'Company name is required.');
+        redirect('/admin/customers/new');
+    }
+
+    $email = strtolower(trim((string) post('email', '')));
+    if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        flash('error', 'Enter a valid email address.');
+        redirect('/admin/customers/new');
+    }
+
+    // Check duplicate email
+    $existing = db()->one('SELECT id FROM customers WHERE email = ?', [$email]);
+    if ($existing) {
+        flash('error', 'A customer with this email already exists.');
+        redirect('/admin/customers/new');
+    }
+
+    $now = date('Y-m-d H:i:s');
+    $tempPassword = bin2hex(random_bytes(6)); // 12-char temp password
+    $customerCode = 'RF-' . strtoupper(substr(sha1($email), 0, 6));
+
+    $customerId = db()->insert('customers', [
+        'customer_code' => $customerCode,
+        'company_name' => $company,
+        'contact_name' => trim((string) post('contact_name', '')),
+        'email' => $email,
+        'phone' => trim((string) post('phone', '')),
+        'gstin' => strtoupper(trim((string) post('gstin', ''))),
+        'address_line1' => trim((string) post('address_line1', '')),
+        'address_line2' => trim((string) post('address_line2', '')),
+        'city' => trim((string) post('city', '')),
+        'state' => trim((string) post('state', '')),
+        'pincode' => trim((string) post('pincode', '')),
+        'price_tier' => trim((string) post('price_tier', 'standard')),
+        'discount_bp' => max(0, min(10000, (int) round(((float) post('discount_percent', 0)) * 100))),
+        'credit_days' => max(0, (int) post('credit_days', 0)),
+        'credit_limit_paise' => parse_money_to_paise(post('credit_limit', '0')),
+        'is_active' => post('is_active') ? 1 : 0,
+        'password_hash' => password_hash($tempPassword, PASSWORD_DEFAULT),
+        'password_set_at' => $now,
+        'created_at' => $now,
+        'updated_at' => $now,
+    ]);
+
+    // Email credentials to customer
+    if (config('store.notify_orders', false) && !empty($email)) {
+        try {
+            $body = "Your Ronak Fire customer account has been created\n\n"
+                . 'Company: ' . $company . "\n"
+                . 'Customer ID: ' . $customerCode . "\n"
+                . 'Email (User ID): ' . $email . "\n"
+                . 'Temporary password: ' . $tempPassword . "\n\n"
+                . 'Please log in at ' . abs_url('/login') . ' and change your password after first login.' . "\n\n"
+                . 'You can now view your orders, inventory and documents in your account.' . "\n\n"
+                . 'Ronak Fire India Pvt. Ltd.';
+            @mail(
+                $email,
+                'Your Ronak Fire customer account — login details',
+                $body,
+                'From: ' . config('store.support_email') . "\r\nContent-Type: text/plain; charset=UTF-8"
+            );
+        } catch (Throwable $e) {
+            error_log('Customer credentials email failed: ' . $e->getMessage());
+        }
+    }
+
+    flash('success', 'Customer account created. Login details have been emailed to ' . $email . '. Temporary password: ' . $tempPassword);
+    redirect('/admin/customers/' . $customerId);
+}
+
 /* -------------------------------------------------------------------------
    Enquiries
    ------------------------------------------------------------------------- */
@@ -1009,6 +1194,45 @@ function ctrl_admin_enquiry_status(array $params): void
     }
     flash('success', 'Quote request marked as ' . $status . '.');
     redirect('/admin/enquiries/' . $id);
+}
+
+function ctrl_admin_enquiry_convert(array $params): void
+{
+    Auth::requireAdmin();
+    require_csrf();
+
+    $id = admin_url_id($params);
+    $enquiry = db()->one('SELECT * FROM enquiries WHERE id = ?', [$id]);
+    if (!$enquiry) {
+        flash('error', 'Enquiry not found.');
+        redirect('/admin/enquiries');
+    }
+    if (!$enquiry['customer_id'] || !$enquiry['product_id']) {
+        flash('error', 'This enquiry has no linked customer or product — cannot auto-convert. Create the order manually.');
+        redirect('/admin/enquiries/' . $id);
+    }
+
+    $customerId = (int) $enquiry['customer_id'];
+    $productId  = (int) $enquiry['product_id'];
+    $qty        = max(1, (int) $enquiry['qty']);
+
+    // Reconstruct selection from stored configuration (free-text, best effort)
+    $selection = ['groups' => [], 'dimensions' => []];
+
+    $result = \App\Cart::add($customerId, $productId, $qty, $selection);
+    if (!$result['ok']) {
+        flash('error', 'Could not add product to cart: ' . $result['message']);
+        redirect('/admin/enquiries/' . $id);
+    }
+
+    // Mark enquiry as converted
+    db()->update('enquiries', [
+        'status'     => 'quoted',
+        'updated_at' => date('Y-m-d H:i:s'),
+    ], 'id = :id', ['id' => $id]);
+
+    flash('success', 'Product added to customer cart. The customer can now check out at /cart.');
+    redirect('/admin/customers/' . $customerId);
 }
 
 /* -------------------------------------------------------------------------

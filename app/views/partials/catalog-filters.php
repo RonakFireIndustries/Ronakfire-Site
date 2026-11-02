@@ -24,12 +24,16 @@ $filterIsConfigurable = !empty($filters['configurable']);
 <div class="filter-group">
     <h2 class="filter-group__title">Product type</h2>
     <nav class="filter-list" aria-label="Product type">
-        <a class="filter-list__item <?= !$filterIsConfigurable ? 'is-active' : '' ?>" href="/catalog<?= !empty($filters['category']) ? '/' . e($filters['category']) : '' ?><?= !empty($filters['q']) ? '?q=' . urlencode((string) $filters['q']) : '' ?>">
+        <a class="filter-list__item <?= !$filterIsConfigurable && !input('in_stock') ? 'is-active' : '' ?>" href="/catalog<?= !empty($filters['category']) ? '/' . e($filters['category']) : '' ?><?= !empty($filters['q']) ? '?q=' . urlencode((string) $filters['q']) : '' ?>">
             <span>All types</span>
         </a>
         <a class="filter-list__item <?= $filterIsConfigurable ? 'is-active' : '' ?>" href="/catalog<?= !empty($filters['category']) ? '/' . e($filters['category']) : '' ?>?configurable=1<?= !empty($filters['q']) ? '&q=' . urlencode((string) $filters['q']) : '' ?>">
             <span>Configurable</span>
             <?= icon('spark') ?>
+        </a>
+        <a class="filter-list__item <?= input('in_stock') ? 'is-active' : '' ?>" href="/catalog<?= !empty($filters['category']) ? '/' . e($filters['category']) : '' ?>?in_stock=1<?= !empty($filters['q']) ? '&q=' . urlencode((string) $filters['q']) : '' ?><?= $filterIsConfigurable ? '&configurable=1' : '' ?>">
+            <span>In stock</span>
+            <?= icon('package') ?>
         </a>
     </nav>
 </div>

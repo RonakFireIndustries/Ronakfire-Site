@@ -17,26 +17,33 @@ $sortOptions = [
     'newest' => 'Newest first',
 ];
 ?>
-<section class="page-hero">
+<section class="shop-hero">
     <div class="container">
         <nav class="breadcrumbs" aria-label="Breadcrumb">
             <a href="/">Home</a><?= icon('chevron-right') ?>
-            <a href="/catalog">Catalog</a>
+            <a href="/catalog">Shop</a>
             <?php if ($activeCategory): ?><?= icon('chevron-right') ?><span><?= e($activeCategory['name']) ?></span><?php endif; ?>
         </nav>
-        <div class="page-hero__grid">
-            <div>
-                <p class="eyebrow"><span></span> <?= $activeCategory ? 'Category' : 'Product catalog' ?></p>
-                <h1><?= e($catalogTitle) ?></h1>
-                <p class="page-hero__lede"><?= e($catalogLede) ?></p>
+        <div class="shop-hero__layout">
+            <div class="shop-hero__copy">
+                <p class="eyebrow"><span></span> <?= $activeCategory ? 'Category range' : 'Complete product range' ?></p>
+                <h1><?= $activeCategory ? e($activeCategory['name']) : 'Fire Safety Equipment' ?></h1>
+                <p class="shop-hero__lede"><?= $activeCategory && !empty($activeCategory['tagline']) ? e($activeCategory['tagline']) : 'Engineered, tested and manufactured in-house for hydrant systems, extinguishers, hose reels, cabinets and project-specific fabrication.' ?></p>
+                <div class="shop-hero__stats">
+                    <div><strong><?= (int) $total ?></strong><span><?= $total === 1 ? 'Product' : 'Products' ?></span></div>
+                    <div><strong>IS/BIS</strong><span>Tested standards</span></div>
+                    <div><strong>In-house</strong><span>Palghar factory</span></div>
+                </div>
+                <div class="shop-hero__actions">
+                    <a class="btn btn--primary" href="/quote">Get project quote <?= icon('arrow-right') ?></a>
+                    <a class="btn btn--ghost" href="/contact">Speak to an engineer</a>
+                </div>
             </div>
-            <div class="page-hero__aside">
-                <strong><?= (int) $total ?></strong>
-                <span><?= $total === 1 ? 'product' : 'products' ?> in this view</span>
-                <?php if ($activeCategory && !empty($activeCategory['image'])): ?>
-                    <img src="<?= e($activeCategory['image']) ?>" alt="" loading="lazy">
-                <?php endif; ?>
-            </div>
+            <?php if ($activeCategory && !empty($activeCategory['image'])): ?>
+                <div class="shop-hero__media">
+                    <img src="<?= e($activeCategory['image']) ?>" alt="<?= e($activeCategory['name']) ?>" loading="lazy">
+                </div>
+            <?php endif; ?>
         </div>
     </div>
 </section>
@@ -50,23 +57,6 @@ $sortOptions = [
                     <?php if (!empty($filters['category']) || !empty($filters['configurable'])): ?><span class="catalog-filter-toggle__dot"></span><?php endif; ?>
                 </button>
                 <p class="catalog-count">Showing <strong><?= count($products) ?></strong> of <?= (int) $total ?></p>
-            </div>
-            <div class="catalog-toolbar__right">
-                <form class="sort-form" action="<?= e(current_path()) ?>" method="get">
-                    <?php if (!empty($filters['q'])): ?><input type="hidden" name="q" value="<?= e($filters['q']) ?>"><?php endif; ?>
-                    <?php if (!empty($filters['configurable'])): ?><input type="hidden" name="configurable" value="1"><?php endif; ?>
-                    <label for="sort">Sort</label>
-                    <select id="sort" name="sort" data-auto-submit>
-                        <?php foreach ($sortOptions as $value => $label): ?>
-                            <option value="<?= e($value) ?>" <?= ($filters['sort'] ?? '') === $value ? 'selected' : '' ?>><?= e($label) ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </form>
-                <?php if (!empty($filters['q'])): ?>
-                    <a class="active-filter" href="<?= $activeCategory ? '/catalog/' . e($activeCategory['slug']) : '/catalog' ?>">
-                        “<?= e($filters['q']) ?>” <?= icon('close') ?>
-                    </a>
-                <?php endif; ?>
             </div>
         </div>
 

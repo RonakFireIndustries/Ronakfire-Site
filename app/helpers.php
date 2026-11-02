@@ -313,7 +313,7 @@ function setting(string $key, mixed $default = null): mixed
         return $cache[$key];
     }
     try {
-        $value = db()->value('SELECT value FROM settings WHERE key = ?', [$key]);
+        $value = db()->value('SELECT value FROM settings WHERE `key` = ?', [$key]);
     } catch (Throwable) {
         return $default;
     }
@@ -325,9 +325,9 @@ function setting(string $key, mixed $default = null): mixed
 
 function set_setting(string $key, string $value): void
 {
-    $existing = db()->one('SELECT key FROM settings WHERE key = ?', [$key]);
+    $existing = db()->one('SELECT `key` FROM settings WHERE `key` = ?', [$key]);
     if ($existing) {
-        db()->update('settings', ['value' => $value], 'key = :key', ['key' => $key]);
+        db()->update('settings', ['value' => $value], '`key` = :key', ['key' => $key]);
     } else {
         db()->insert('settings', ['key' => $key, 'value' => $value]);
     }
@@ -350,6 +350,25 @@ function parse_money_to_paise(mixed $value): int
 function valid_gstin(string $gstin): bool
 {
     return (bool) preg_match('/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/', strtoupper($gstin));
+}
+
+/**
+ * Indian states and union territories used by address forms.
+ *
+ * @return list<string>
+ */
+function indian_states(): array
+{
+    return [
+        'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh',
+        'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jharkhand', 'Karnataka',
+        'Kerala', 'Madhya Pradesh', 'Maharashtra', 'Manipur', 'Meghalaya',
+        'Mizoram', 'Nagaland', 'Odisha', 'Punjab', 'Rajasthan', 'Sikkim',
+        'Tamil Nadu', 'Telangana', 'Tripura', 'Uttar Pradesh', 'Uttarakhand',
+        'West Bengal', 'Andaman and Nicobar Islands', 'Chandigarh',
+        'Dadra and Nagar Haveli and Daman and Diu', 'Delhi', 'Jammu and Kashmir',
+        'Ladakh', 'Lakshadweep', 'Puducherry',
+    ];
 }
 
 function slugify(string $text): string
@@ -478,4 +497,24 @@ function icon(string $name, string $class = ''): string
 
     $path = $paths[$name] ?? $paths['file'];
     return '<svg class="icon ' . e($class) . '" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' . $path . '</svg>';
+}
+
+
+if (!function_exists('guest_cart_id')) {
+    function guest_cart_id(bool $create = true): string
+    {
+        if (!empty($_COOKIE['guest_cart_id'])) {
+            $id = trim((string) $_COOKIE['guest_cart_id']);
+            if (preg_match('/^[a-zA-Z0-9_-]{16,64}$/', $id)) {
+                return $id;
+            }
+        }
+        $id = bin2hex(random_bytes(16));
+        if ($create) {
+            $secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
+            @setcookie('guest_cart_id', $id, time() + 60 * 60 * 24 * 30, '/', '', $secure, true);
+            $_COOKIE['guest_cart_id'] = $id;
+        }
+        return $id;
+    }
 }

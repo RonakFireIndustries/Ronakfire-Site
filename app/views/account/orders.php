@@ -33,9 +33,23 @@
                                     <td data-label="Order"><a class="table-link" href="/order/<?= e($accountOrder['order_no']) ?>"><?= e($accountOrder['order_no']) ?></a></td>
                                     <td data-label="Placed"><?= e(format_date($accountOrder['placed_at'])) ?></td>
                                     <td data-label="PO"><?= e($accountOrder['po_number'] ?: '—') ?></td>
-                                    <td data-label="Status"><span class="status-pill <?= e(order_status_class($accountOrder['status'])) ?>"><?= e(order_status_label($accountOrder['status'])) ?></span></td>
+                                    <td data-label="Status">
+                                        <span class="status-pill <?= e(order_status_class($accountOrder['status'])) ?>"><?= e(order_status_label($accountOrder['status'])) ?></span>
+                                        <?php if (($accountOrder['status'] === 'dispatched') && !empty($accountOrder['tracking_no'])): ?>
+                                            <span style="display:block;font-size:11px;color:#475569;margin-top:4px;">Track: <?= e($accountOrder['tracking_no']) ?></span>
+                                        <?php endif; ?>
+                                    </td>
                                     <td data-label="Total" class="is-right"><?= money((int) $accountOrder['grand_total_paise']) ?></td>
-                                    <td class="is-right"><a class="table-action" href="/order/<?= e($accountOrder['order_no']) ?>">View <?= icon('arrow-right') ?></a></td>
+                                    <td class="is-right table-actions">
+                                        <a class="table-action" href="/order/<?= e($accountOrder['order_no']) ?>">View <?= icon('arrow-right') ?></a>
+                                        <a class="table-action" href="/order/<?= e($accountOrder['order_no']) ?>/print" target="_blank"><?= icon('file') ?> Invoice</a>
+                                        <?php if ($accountOrder['status'] !== 'cancelled'): ?>
+                                        <form action="/order/<?= e($accountOrder['order_no']) ?>/reorder" method="post" style="display:inline">
+                                            <?= csrf_field() ?>
+                                            <button type="submit" class="table-action"><?= icon('refresh') ?> Reorder</button>
+                                        </form>
+                                        <?php endif; ?>
+                                    </td>
                                 </tr>
                             <?php endforeach; ?>
                             </tbody>

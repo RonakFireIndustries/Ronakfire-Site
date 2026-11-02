@@ -111,15 +111,29 @@ $customer = current_customer();
                 </div>
 
                 <div class="panel">
-                    <div class="panel__head"><div><h2>Account details</h2><p>Managed by the Ronak Fire customer portal.</p></div></div>
+                    <div class="panel__head">
+                        <div><h2>Account details</h2><p>Contact and delivery information.</p></div>
+                        <a class="text-link" href="/account/profile">Edit</a>
+                    </div>
                     <dl class="account-details">
                         <div><dt>Company</dt><dd><?= e($customer['company_name']) ?></dd></div>
                         <div><dt>Contact</dt><dd><?= e($customer['contact_name'] ?: '—') ?></dd></div>
                         <div><dt>Email</dt><dd><?= e($customer['email'] ?: '—') ?></dd></div>
                         <div><dt>Phone</dt><dd><?= e($customer['phone'] ?: '—') ?></dd></div>
                         <div><dt>GSTIN</dt><dd><?= e($customer['gstin'] ?: 'Not on file') ?></dd></div>
+                        <div>
+                            <dt>Address</dt>
+                            <dd>
+                                <?php if ($customer['address_line1'] || $customer['city']): ?>
+                                    <?= e($customer['address_line1']) ?><?php if ($customer['address_line2']): ?><br><?= e($customer['address_line2']) ?><?php endif; ?><br>
+                                    <?= e(trim(($customer['city'] ?? '') . ' ' . ($customer['state'] ?? '') . ' ' . ($customer['pincode'] ?? ''))) ?>
+                                <?php else: ?>
+                                    —
+                                <?php endif; ?>
+                            </dd>
+                        </div>
                     </dl>
-                    <p class="panel__note"><?= icon('lock') ?> To change your company details or portal password, use <a href="https://rfipl.ronakfire.com" target="_blank" rel="noopener">rfipl.ronakfire.com</a>.</p>
+                    <p class="panel__note"><?= icon('lock') ?> Company, GSTIN and pricing are managed by our sales team. <a href="/account/profile">Edit your contact and address</a>.</p>
                 </div>
             </div>
         </div>

@@ -16,6 +16,9 @@
     <button type="button" data-print>Print / save as PDF</button>
 </div>
 <?= $content ?>
+<?php if (isset($_GET['pdf'])): ?>
+<script>window.addEventListener('load', function(){ setTimeout(function(){ window.print(); }, 400); });</script>
+<?php endif; ?>
 <script src="<?= e(asset('assets/js/print.js')) ?>" defer></script>
 </body>
 </html>

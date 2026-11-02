@@ -137,6 +137,7 @@ foreach ($orders as $row) {
                     <div><dt>Portal ID</dt><dd><code><?= e($customer['portal_id']) ?></code></dd></div>
                     <div><dt>Created</dt><dd><?= e(format_datetime($customer['created_at'])) ?></dd></div>
                     <div><dt>Last login</dt><dd><?= e(format_datetime($customer['last_login_at'])) ?></dd></div>
+                    <div><dt>Last synced</dt><dd><?= e(format_datetime($customer['portal_synced_at'] ?? null)) ?></dd></div>
                     <div><dt>Updated</dt><dd><?= e(format_datetime($customer['updated_at'])) ?></dd></div>
                 </dl>
             </div>

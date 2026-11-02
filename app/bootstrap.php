@@ -4,8 +4,16 @@ declare(strict_types=1);
 
 use App\Database;
 
-define('BASE_PATH', dirname(__DIR__));
-define('APP_PATH', __DIR__);
+if (!defined('BASE_PATH')) {
+    define('BASE_PATH', dirname(__DIR__));
+}
+if (!defined('APP_PATH')) {
+    define('APP_PATH', __DIR__);
+}
+
+if (is_file(BASE_PATH . '/vendor/autoload.php')) {
+    require BASE_PATH . '/vendor/autoload.php';
+}
 
 $config = require __DIR__ . '/config.php';
 

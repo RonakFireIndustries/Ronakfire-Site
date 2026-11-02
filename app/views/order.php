@@ -26,6 +26,13 @@ if ($currentIndex === false) {
             <div class="order-head__actions">
                 <span class="status-pill <?= e(order_status_class($status)) ?>"><?= e(order_status_label($status)) ?></span>
                 <a class="btn btn--outline btn--sm" href="/order/<?= e($order['order_no']) ?>/print" target="_blank" rel="noopener"><?= icon('download') ?> Print proforma</a>
+                <a class="btn btn--outline btn--sm" href="/order/<?= e($order['order_no']) ?>/print?pdf=1" target="_blank" rel="noopener"><?= icon('download') ?> Download PDF</a>
+                <?php if (!$cancelled): ?>
+                <form action="/order/<?= e($order['order_no']) ?>/reorder" method="post" style="display:inline">
+                    <?= csrf_field() ?>
+                    <button class="btn btn--outline btn--sm" type="submit"><?= icon('refresh') ?> Reorder</button>
+                </form>
+                <?php endif; ?>
             </div>
         </div>
     </div>
@@ -47,6 +54,20 @@ if ($currentIndex === false) {
             </div>
         <?php endif; ?>
 
+        <?php if (!$cancelled && !empty($order['tracking_no'])): ?>
+            <div class="order-tracking" style="margin:18px 0;padding:14px 18px;border-radius:12px;background:#f8fafc;border:1px solid #e2e8f0;display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+                <?= icon('truck') ?>
+                <div style="flex:1;min-width:240px;">
+                    <strong>Dispatched</strong>
+                    <?php if (!empty($order['courier_name'])): ?> via <?= e($order['courier_name']) ?><?php endif; ?>
+                    <?php if (!empty($order['tracking_no'])): ?> · Tracking: <strong><?= e($order['tracking_no']) ?></strong><?php endif; ?>
+                </div>
+                <?php if (!empty($order['tracking_url'])): ?>
+                    <a class="btn btn--outline btn--sm" href="<?= e($order['tracking_url']) ?>" target="_blank" rel="noopener">Track shipment</a>
+                <?php endif; ?>
+            </div>
+        <?php endif; ?>
+
         <?php if ($cancelled): ?>
             <div class="flash flash--error"><?= icon('alert') ?><p>This order was cancelled. Call sales if you need it reinstated or re-quoted.</p></div>
         <?php else: ?>
@@ -64,6 +85,19 @@ if ($currentIndex === false) {
                     </li>
                 <?php $i++; endforeach; ?>
             </ol>
+            <?php if (!empty($order['tracking_no'])): ?>
+                <div class="tracking-banner">
+                    <?= icon('truck') ?>
+                    <div>
+                        <strong>Your order is on its way.</strong>
+                        <?php if (!empty($order['courier_name'])): ?><span><?= e($order['courier_name']) ?></span><?php endif; ?>
+                        <span>Docket: <?= e($order['tracking_no']) ?></span>
+                        <?php if (!empty($order['tracking_url'])): ?>
+                            <a href="<?= e($order['tracking_url']) ?>" target="_blank" rel="noopener">Track shipment <?= icon('arrow-right') ?></a>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            <?php endif; ?>
         <?php endif; ?>
 
         <div class="order-layout">

@@ -14,16 +14,44 @@ use App\Pricing;
 
 function ctrl_shop(): void
 {
+    $categorySlug = (string) input('category', '');
+    $activeCategory = $categorySlug !== '' ? Catalog::findCategory($categorySlug) : null;
+    if ($categorySlug !== '' && !$activeCategory) {
+        http_response_code(404);
+        render('errors/404', ['pageTitle' => 'Category not found'], 'layout');
+        return;
+    }
+
+    $filters = [
+        'category' => $categorySlug,
+        'q' => (string) input('q', ''),
+        'sort' => (string) input('sort', ''),
+        'configurable' => input('configurable') ? 1 : null,
+        'in_stock' => input('in_stock') ? 1 : null,
+    ];
+
+    $total = Catalog::count($filters);
+    $perPage = 12;
+    $page = max(1, (int) input('page', 1));
+    $pages = max(1, (int) ceil($total / $perPage));
+    $page = min($page, $pages);
+
+    $products = Catalog::products($filters + ['limit' => $perPage, 'offset' => ($page - 1) * $perPage]);
     $categories = Catalog::categories();
-    $featured = Catalog::featured(6);
     $counts = Catalog::countsByCategory();
 
-    render('shop', [
-        'pageTitle' => 'Fire Safety Equipment Store | Ronak Fire India',
-        'metaDescription' => 'Configure and order fire extinguishers, hose reel drums, hose boxes, hydrant valves and fire safety equipment directly from Ronak Fire India. B2B pricing for verified customers.',
+    $title = $activeCategory ? $activeCategory['name'] : 'All Fire Safety Products';
+    render('catalog', [
+        'pageTitle' => $title . ' | Ronak Fire Store',
+        'metaDescription' => $activeCategory['tagline'] ?? 'Browse the Ronak Fire India range of firefighting equipment. Filter by category, compare specifications and configure products to your project.',
+        'products' => $products,
         'categories' => $categories,
-        'featured' => $featured,
         'counts' => $counts,
+        'activeCategory' => $activeCategory,
+        'filters' => $filters,
+        'total' => $total,
+        'page' => $page,
+        'pages' => $pages,
         'activeNav' => '/shop',
     ]);
 }
@@ -43,6 +71,7 @@ function ctrl_catalog(array $params = []): void
         'q' => (string) input('q', ''),
         'sort' => (string) input('sort', ''),
         'configurable' => input('configurable') ? 1 : null,
+        'in_stock' => input('in_stock') ? 1 : null,
     ];
 
     $total = Catalog::count($filters);
@@ -114,8 +143,22 @@ function ctrl_product(array $params): void
 
 function ctrl_cart(): void
 {
-    require_customer();
     $customer = current_customer();
+    if (!$customer) {
+        $guestId = guest_cart_id(true);
+        $items = Cart::guestItems($guestId);
+        $totals = Cart::guestTotals($items);
+        render('cart', [
+            'pageTitle' => 'Your Order | Ronak Fire Store',
+            'bodyClass' => 'page-cart',
+            'items' => $items,
+            'totals' => $totals,
+            'minOrder' => 0,
+            'activeNav' => '/cart',
+            'isGuest' => true,
+        ]);
+        return;
+    }
     $items = Cart::items((int) $customer['id']);
     $totals = Cart::totals($items);
 
@@ -126,6 +169,7 @@ function ctrl_cart(): void
         'totals' => $totals,
         'minOrder' => store_min_order_paise(),
         'activeNav' => '/cart',
+        'isGuest' => false,
     ]);
 }
 
@@ -134,17 +178,6 @@ function ctrl_cart_add(): void
     $contentType = $_SERVER['CONTENT_TYPE'] ?? '';
     $wantsJson = request_wants_json() || str_contains($contentType, 'application/json');
 
-    if (!is_logged_in()) {
-        if ($wantsJson) {
-            json_response([
-                'ok' => false,
-                'message' => 'Please sign in with your customer account to see pricing and order.',
-                'login_url' => url('/login?return=' . urlencode(current_path())),
-            ], 401);
-        }
-        flash('info', 'Sign in to add products to your order.');
-        redirect('/login?return=' . urlencode(current_path()));
-    }
     require_csrf();
 
     $payload = $_POST;
@@ -168,7 +201,12 @@ function ctrl_cart_add(): void
     }
 
     $customer = current_customer();
-    $result = Cart::add((int) $customer['id'], $productId, $qty, $selection);
+    if ($customer) {
+        $result = Cart::add((int) $customer['id'], $productId, $qty, $selection);
+    } else {
+        $guestId = guest_cart_id(true);
+        $result = Cart::guestAdd($guestId, $productId, $qty, $selection);
+    }
 
     if ($wantsJson) {
         json_response($result, $result['ok'] ? 200 : 422);
@@ -182,29 +220,176 @@ function ctrl_cart_add(): void
 
 function ctrl_cart_update(): void
 {
-    require_customer();
     require_csrf();
     $customer = current_customer();
-    $itemId = (int) post('item_id', 0);
-    $qty = (int) post('qty', 1);
-    if (Cart::updateQty((int) $customer['id'], $itemId, $qty)) {
-        flash('success', 'Quantity updated.');
+    if ($customer) {
+        $itemId = (int) post('item_id', 0);
+        $qty = (int) post('qty', 1);
+        if (Cart::updateQty((int) $customer['id'], $itemId, $qty)) {
+            flash('success', 'Quantity updated.');
+        } else {
+            flash('error', 'That item could not be updated.');
+        }
     } else {
-        flash('error', 'That item could not be updated.');
+        $guestId = guest_cart_id(true);
+        $itemId = (int) post('item_id', 0);
+        $qty = (int) post('qty', 1);
+        if (Cart::guestUpdateQty($guestId, $itemId, $qty)) {
+            flash('success', 'Quantity updated.');
+        } else {
+            flash('error', 'That item could not be updated.');
+        }
     }
     redirect('/cart');
 }
 
 function ctrl_cart_remove(): void
 {
-    require_customer();
     require_csrf();
     $customer = current_customer();
-    $itemId = (int) post('item_id', 0);
-    if (Cart::remove((int) $customer['id'], $itemId)) {
-        flash('success', 'Item removed from your order.');
+    if ($customer) {
+        $itemId = (int) post('item_id', 0);
+        if (Cart::remove((int) $customer['id'], $itemId)) {
+            flash('success', 'Item removed from your order.');
+        }
+    } else {
+        $guestId = guest_cart_id(true);
+        $itemId = (int) post('item_id', 0);
+        if (Cart::guestRemove($guestId, $itemId)) {
+            flash('success', 'Item removed from your order.');
+        }
     }
     redirect('/cart');
+}
+
+/* -------------------------------------------------------------------------
+   Cart → Quote request (replaces checkout/payment flow)
+   ------------------------------------------------------------------------- */
+
+function ctrl_cart_quote(): void
+{
+    require_csrf();
+
+    $customer = current_customer();
+    if ($customer) {
+        $items = Cart::items((int) $customer['id']);
+    } else {
+        $guestId = guest_cart_id(true);
+        $items = Cart::guestItems($guestId);
+    }
+    if (!$items) {
+        flash('info', 'Your order is empty. Add a product to continue.');
+        redirect('/catalog');
+    }
+
+    $totals = $customer ? Cart::totals($items) : Cart::guestTotals($items);
+    $errors = [];
+    $form = [
+        'company_name' => $customer['company_name'] ?? '',
+        'contact_name' => $customer['contact_name'] ?? '',
+        'email' => $customer['email'] ?? '',
+        'phone' => $customer['phone'] ?? '',
+        'gstin' => $customer['gstin'] ?? '',
+        'po_number' => '',
+        'notes' => '',
+    ];
+
+    if (is_post()) {
+        foreach (array_keys($form) as $key) {
+            $form[$key] = trim((string) post($key, $form[$key]));
+        }
+
+        if ($form['company_name'] === '') {
+            $errors['company_name'] = 'Enter the billing company name.';
+        }
+        if ($form['contact_name'] === '') {
+            $errors['contact_name'] = 'Enter a contact name.';
+        }
+        if (!filter_var($form['email'], FILTER_VALIDATE_EMAIL)) {
+            $errors['email'] = 'Enter a valid email address.';
+        }
+        if (strlen(preg_replace('/\D/', '', $form['phone'])) < 10) {
+            $errors['phone'] = 'Enter a phone number with at least 10 digits.';
+        }
+        if ($form['gstin'] !== '' && !valid_gstin($form['gstin'])) {
+            $errors['gstin'] = 'Enter a valid 15-character GSTIN, or leave it blank.';
+        }
+
+        if (!$errors) {
+            $now = date('Y-m-d H:i:s');
+            $enquiryId = null;
+            try {
+                $enquiryId = db()->transaction(function () use ($customer, $form, $items, $totals, $now): int {
+                    $enquiryId = db()->insert('enquiries', [
+                        'customer_id' => $customer['id'] ?? null,
+                        'name' => $form['contact_name'],
+                        'company' => $form['company_name'],
+                        'email' => $form['email'],
+                        'phone' => $form['phone'],
+                        'gstin' => strtoupper($form['gstin']),
+                        'product_id' => null,
+                        'product_name' => 'Cart quote request',
+                        'qty' => (int) $totals['item_count'],
+                        'configuration' => json_encode([
+                            'po_number' => $form['po_number'],
+                            'notes' => $form['notes'],
+                            'items' => array_map(function ($item) {
+                                return [
+                                    'product_id' => (int) $item['product_id'],
+                                    'product_name' => $item['name'],
+                                    'sku' => $item['sku'],
+                                    'qty' => (int) $item['qty'],
+                                    'unit_price_paise' => (int) $item['unit_price_paise'],
+                                    'line_total_paise' => (int) $item['line_total_paise'],
+                                    'options' => json_decode((string) $item['options_json'], true) ?? [],
+                                ];
+                            }, $items),
+                        ], JSON_UNESCAPED_UNICODE),
+                        'message' => trim($form['notes']),
+                        'status' => 'new',
+                        'created_at' => $now,
+                        'updated_at' => $now,
+                    ]);
+
+                    // Generate PDF and send email to sales team with full cart details
+                    $pdfPath = null;
+                    try {
+                        $pdfPath = QuotePdf::generate((int) $enquiryId, $customer ?? [], $form, $items, $totals);
+                    } catch (Throwable $pdfErr) {
+                        error_log('Quote PDF generation failed: ' . $pdfErr->getMessage());
+                    }
+                    notify_cart_quote((int) $enquiryId, $customer ?? [], $form, $items, $totals, $pdfPath);
+
+                    if ($customer) {
+                        Cart::clear((int) $customer['id']);
+                    } else {
+                        Cart::guestClear(guest_cart_id(true));
+                    }
+                    return (int) $enquiryId;
+                });
+
+                flash('success', 'Your requirement has been sent to our sales team. We will reply with pricing and lead time.');
+                if ($customer) {
+                    redirect('/account/enquiries');
+                }
+                redirect('/quote?sent=1');
+            } catch (Throwable $e) {
+                error_log('Cart quote failed: ' . $e->getMessage());
+                $errors['general'] = 'We could not send your request. Please try again or call our sales team.';
+            }
+        }
+    }
+
+    render('cart-quote', [
+        'pageTitle' => 'Request Quote from Cart | Ronak Fire Store',
+        'bodyClass' => 'page-cart-quote',
+        'items' => $items,
+        'totals' => $totals,
+        'customer' => $customer ?? [],
+        'form' => $form,
+        'errors' => $errors,
+        'activeNav' => '/cart',
+    ]);
 }
 
 /* -------------------------------------------------------------------------
@@ -449,6 +634,54 @@ function ctrl_order_print(array $params): void
     ], 'print');
 }
 
+function ctrl_order_reorder(array $params): void
+{
+    require_customer();
+    require_csrf();
+    $customer = current_customer();
+    $order = find_order_for_customer((string) ($params['no'] ?? ''), (int) $customer['id']);
+    if (!$order) {
+        http_response_code(404);
+        exit('Order not found');
+    }
+
+    $items = db()->all('SELECT * FROM order_items WHERE order_id = ? ORDER BY id', [$order['id']]);
+    $added = 0;
+    $skipped = 0;
+    foreach ($items as $item) {
+        if (!(int) $item['product_id']) {
+            $skipped++;
+            continue;
+        }
+        $options = decode_json($item['options_json']) ?? [];
+        // Reconstruct selection from stored options
+        $selection = ['groups' => [], 'dimensions' => []];
+        foreach ($options['groups'] ?? [] as $g) {
+            $selection['groups'][$g['slug']] = $g['value_id'];
+        }
+        foreach ($options['dimensions'] ?? [] as $d) {
+            $selection['dimensions'][$d['slug']] = ['w' => $d['w'], 'h' => $d['h'], 'd' => $d['d']];
+        }
+        $result = Cart::add((int) $customer['id'], (int) $item['product_id'], (int) $item['qty'], $selection);
+        if ($result['ok']) {
+            $added++;
+        } else {
+            $skipped++;
+        }
+    }
+
+    if ($added > 0) {
+        $msg = $added . ' ' . ($added === 1 ? 'item' : 'items') . ' added to your order.';
+        if ($skipped > 0) {
+            $msg .= ' ' . $skipped . ' item(s) could not be added (product may no longer be available).';
+        }
+        flash('success', $msg);
+    } else {
+        flash('error', 'No items could be added. The products may no longer be available.');
+    }
+    redirect('/cart');
+}
+
 /* -------------------------------------------------------------------------
    Account
    ------------------------------------------------------------------------- */
@@ -481,6 +714,79 @@ function ctrl_account(): void
     ]);
 }
 
+function ctrl_account_profile(): void
+{
+    require_customer();
+
+    render('account/profile', [
+        'pageTitle' => 'My details | Ronak Fire Store',
+        'bodyClass' => 'page-account',
+        'activeNav' => '/account',
+    ]);
+}
+
+function ctrl_account_profile_save(): void
+{
+    require_customer();
+    require_csrf();
+    $customer = current_customer();
+    $id = (int) $customer['id'];
+
+    $data = [
+        'contact_name' => trim((string) post('contact_name', '')),
+        'phone' => trim((string) post('phone', '')),
+        'address_line1' => trim((string) post('address_line1', '')),
+        'address_line2' => trim((string) post('address_line2', '')),
+        'city' => trim((string) post('city', '')),
+        'state' => trim((string) post('state', '')),
+        'pincode' => trim((string) post('pincode', '')),
+    ];
+
+    $errors = [];
+    if (mb_strlen($data['contact_name']) > 191) {
+        $errors[] = 'Contact name is too long.';
+    }
+    if ($data['phone'] !== '' && !preg_match('/^[0-9+\-\s().]{6,32}$/', $data['phone'])) {
+        $errors[] = 'Enter a valid phone number.';
+    }
+    if (mb_strlen($data['address_line1']) > 255 || mb_strlen($data['address_line2']) > 255) {
+        $errors[] = 'Address lines must be 255 characters or fewer.';
+    }
+    if (mb_strlen($data['city']) > 100) {
+        $errors[] = 'City name is too long.';
+    }
+    if ($data['state'] !== '' && !in_array($data['state'], indian_states(), true)) {
+        $errors[] = 'Select a valid state.';
+    }
+    if ($data['pincode'] !== '' && !preg_match('/^[0-9]{6}$/', $data['pincode'])) {
+        $errors[] = 'Enter a valid 6-digit PIN code.';
+    }
+
+    $hasAddress = $data['address_line1'] !== ''
+        || $data['city'] !== ''
+        || $data['state'] !== ''
+        || $data['pincode'] !== '';
+
+    if ($hasAddress) {
+        foreach (['address_line1' => 'street address', 'city' => 'city', 'state' => 'state', 'pincode' => 'PIN code'] as $field => $label) {
+            if ($data[$field] === '') {
+                $errors[] = 'Enter your ' . $label . '.';
+            }
+        }
+    }
+
+    if ($errors !== []) {
+        flash('error', implode(' ', $errors));
+        redirect('/account/profile');
+    }
+
+    $data['updated_at'] = date('Y-m-d H:i:s');
+    db()->update('customers', $data, 'id = :id', ['id' => $id]);
+
+    flash('success', 'Your contact and address details have been updated.');
+    redirect('/account/profile');
+}
+
 function ctrl_account_orders(): void
 {
     require_customer();
@@ -511,6 +817,164 @@ function ctrl_account_enquiries(): void
         'enquiries' => $enquiries,
         'activeNav' => '/account',
     ]);
+}
+
+function ctrl_account_enquiry_reorder(array $params): void
+{
+    require_customer();
+    require_csrf();
+    $customer = current_customer();
+    $id = (int) ($params['id'] ?? 0);
+    $enquiry = db()->one('SELECT * FROM enquiries WHERE id = ? AND customer_id = ?', [$id, (int) $customer['id']]);
+    if (!$enquiry) {
+        flash('error', 'Enquiry not found.');
+        redirect('/account/enquiries');
+    }
+    if (empty($enquiry['product_id'])) {
+        flash('error', 'This enquiry has no linked product to reorder.');
+        redirect('/account/enquiries');
+    }
+    $productId = (int) $enquiry['product_id'];
+    $qty = max(1, (int) ($enquiry['qty'] ?? 1));
+    $config = $enquiry['configuration'] ? json_decode((string) $enquiry['configuration'], true) : [];
+    if (!is_array($config)) {
+        $config = [];
+    }
+    $result = \App\Cart::add((int) $customer['id'], $productId, $qty, $config);
+    if ($result['ok']) {
+        flash('success', 'Enquiry added to cart.');
+        redirect('/cart');
+        return;
+    }
+    flash('error', $result['message'] ?? 'Could not add to cart.');
+    redirect('/account/enquiries');
+}
+
+/* -------------------------------------------------------------------------
+   Saved addresses
+   ------------------------------------------------------------------------- */
+
+function ctrl_account_addresses(): void
+{
+    require_customer();
+    $customer = current_customer();
+    $addresses = db()->all(
+        'SELECT * FROM customer_addresses WHERE customer_id = ? ORDER BY is_default DESC, id ASC',
+        [(int) $customer['id']]
+    );
+    render('account/addresses', [
+        'pageTitle' => 'Saved Addresses | Ronak Fire Store',
+        'bodyClass' => 'page-account',
+        'addresses' => $addresses,
+        'activeNav' => '/account',
+    ]);
+}
+
+function ctrl_account_address_save(): void
+{
+    require_customer();
+    require_csrf();
+    $customer = current_customer();
+    $customerId = (int) $customer['id'];
+
+    $stateList = ['Andhra Pradesh','Arunachal Pradesh','Assam','Bihar','Chhattisgarh','Goa','Gujarat','Haryana','Himachal Pradesh','Jharkhand','Karnataka','Kerala','Madhya Pradesh','Maharashtra','Manipur','Meghalaya','Mizoram','Nagaland','Odisha','Punjab','Rajasthan','Sikkim','Tamil Nadu','Telangana','Tripura','Uttar Pradesh','Uttarakhand','West Bengal','Andaman and Nicobar Islands','Chandigarh','Dadra and Nagar Haveli and Daman and Diu','Delhi','Jammu and Kashmir','Ladakh','Lakshadweep','Puducherry'];
+
+    $id = (int) post('id', 0);
+    $data = [
+        'label'        => substr(trim((string) post('label', 'Default')), 0, 64) ?: 'Default',
+        'company_name' => trim((string) post('company_name', '')),
+        'contact_name' => trim((string) post('contact_name', '')),
+        'phone'        => trim((string) post('phone', '')),
+        'address_line1'=> trim((string) post('address_line1', '')),
+        'address_line2'=> trim((string) post('address_line2', '')),
+        'city'         => trim((string) post('city', '')),
+        'state'        => trim((string) post('state', '')),
+        'pincode'      => trim((string) post('pincode', '')),
+    ];
+
+    $errors = [];
+    if ($data['address_line1'] === '') {
+        $errors[] = 'Address line 1 is required.';
+    }
+    if ($data['city'] === '') {
+        $errors[] = 'City is required.';
+    }
+    if (!in_array($data['state'], $stateList, true)) {
+        $errors[] = 'Choose a valid state.';
+    }
+    if (!preg_match('/^\d{6}$/', $data['pincode'])) {
+        $errors[] = 'Enter a 6-digit PIN code.';
+    }
+
+    if ($errors) {
+        flash('error', implode(' ', $errors));
+        redirect('/account/addresses');
+    }
+
+    if ($id > 0) {
+        // Only allow editing own addresses
+        $existing = db()->one('SELECT id FROM customer_addresses WHERE id = ? AND customer_id = ?', [$id, $customerId]);
+        if (!$existing) {
+            flash('error', 'Address not found.');
+            redirect('/account/addresses');
+        }
+        db()->update('customer_addresses', $data, 'id = ? AND customer_id = ?', [$id, $customerId]);
+        flash('success', 'Address updated.');
+    } else {
+        $data['customer_id'] = $customerId;
+        $data['is_default']  = 0;
+        $data['created_at']  = date('Y-m-d H:i:s');
+        $newId = db()->insert('customer_addresses', $data);
+        // If this is the first address, make it default
+        $count = (int) db()->value('SELECT COUNT(*) FROM customer_addresses WHERE customer_id = ?', [$customerId]);
+        if ($count === 1) {
+            db()->update('customer_addresses', ['is_default' => 1], 'id = ?', [$newId]);
+        }
+        flash('success', 'Address saved.');
+    }
+    redirect('/account/addresses');
+}
+
+function ctrl_account_address_delete(array $params): void
+{
+    require_customer();
+    require_csrf();
+    $customer = current_customer();
+    $customerId = (int) $customer['id'];
+    $id = (int) ($params['id'] ?? 0);
+    $row = db()->one('SELECT id, is_default FROM customer_addresses WHERE id = ? AND customer_id = ?', [$id, $customerId]);
+    if (!$row) {
+        flash('error', 'Address not found.');
+        redirect('/account/addresses');
+    }
+    db()->exec('DELETE FROM customer_addresses WHERE id = ?', [$id]);
+    // If we deleted the default, promote the oldest remaining one
+    if ((int) $row['is_default'] === 1) {
+        $next = db()->one('SELECT id FROM customer_addresses WHERE customer_id = ? ORDER BY id ASC LIMIT 1', [$customerId]);
+        if ($next) {
+            db()->update('customer_addresses', ['is_default' => 1], 'id = ?', [(int) $next['id']]);
+        }
+    }
+    flash('success', 'Address removed.');
+    redirect('/account/addresses');
+}
+
+function ctrl_account_address_default(array $params): void
+{
+    require_customer();
+    require_csrf();
+    $customer = current_customer();
+    $customerId = (int) $customer['id'];
+    $id = (int) ($params['id'] ?? 0);
+    $row = db()->one('SELECT id FROM customer_addresses WHERE id = ? AND customer_id = ?', [$id, $customerId]);
+    if (!$row) {
+        flash('error', 'Address not found.');
+        redirect('/account/addresses');
+    }
+    db()->exec('UPDATE customer_addresses SET is_default = 0 WHERE customer_id = ?', [$customerId]);
+    db()->update('customer_addresses', ['is_default' => 1], 'id = ?', [$id]);
+    flash('success', 'Default address updated.');
+    redirect('/account/addresses');
 }
 
 /* -------------------------------------------------------------------------
@@ -617,7 +1081,7 @@ function ctrl_login(): void
     $portalError = (string) input('portal', '') === '1';
     $portalReady = (string) config('portal.jwt_secret', '') !== '';
 
-    if (!dev_login_enabled() && $portalReady && !$portalError) {
+    if ($portalReady && !$portalError) {
         redirect(PortalAuth::loginUrl($return));
     }
 
@@ -631,41 +1095,45 @@ function ctrl_login(): void
     ]);
 }
 
-function ctrl_login_dev(): void
+function ctrl_login_password(): void
 {
-    if (!dev_login_enabled()) {
-        http_response_code(404);
-        exit('Not found');
+    if (is_logged_in()) {
+        redirect(safe_return_path(input('return', '/account')));
     }
+
     require_csrf();
 
-    $email = strtolower(trim((string) post('email', '')));
-    $name = trim((string) post('name', 'Demo Buyer'));
-    $company = trim((string) post('company', 'Demo Fire Systems Pvt. Ltd.'));
     $return = safe_return_path(post('return', '/account'));
+    $email = strtolower(trim((string) post('email', '')));
+    $password = (string) post('password', '');
 
-    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        flash('error', 'Enter a valid email address for the demo login.');
+    if ($email === '' || $password === '') {
+        flash('error', 'Enter your email and password.');
         redirect('/login?return=' . urlencode($return));
     }
 
-    $claims = [
-        'sub' => 'dev-' . sha1($email),
-        'email' => $email,
-        'name' => $name,
-        'company' => $company,
-        'customer_code' => 'DEMO-' . strtoupper(substr(sha1($email), 0, 5)),
-        'tier' => 'dealer',
-        'gstin' => '',
-    ];
+    $customer = db()->one(
+        'SELECT * FROM customers WHERE email = ? AND is_active = 1',
+        [$email]
+    );
 
-    $customer = Auth::syncCustomer($claims);
-    if (!$customer) {
-        flash('error', 'The demo account could not be created.');
-        redirect('/login');
+    if (!$customer || empty($customer['password_hash']) || !password_verify($password, (string) $customer['password_hash'])) {
+        // Slow down repeated guesses without blocking legitimate retries.
+        usleep(300000);
+        flash('error', 'Those credentials do not match an active customer account.');
+        redirect('/login?return=' . urlencode($return));
     }
 
-    flash('success', 'Signed in as ' . $customer['company_name'] . '.');
+    session_regenerate_id(true);
+    $_SESSION['customer_id'] = (int) $customer['id'];
+    db()->update(
+        'customers',
+        ['last_login_at' => date('Y-m-d H:i:s')],
+        'id = :id',
+        ['id' => (int) $customer['id']]
+    );
+
+    flash('success', 'Welcome back, ' . $customer['company_name'] . '.');
     redirect($return);
 }
 
@@ -697,6 +1165,8 @@ function notify_order_placed(int $orderId): void
         }
         $customer = db()->one('SELECT * FROM customers WHERE id = ?', [$order['customer_id']]);
         $items = db()->all('SELECT * FROM order_items WHERE order_id = ?', [$orderId]);
+
+        // Admin notification (plain text fallback)
         $lines = [];
         foreach ($items as $item) {
             $lines[] = $item['qty'] . ' × ' . $item['product_name'] . ' — ' . money((int) $item['line_total_paise']);
@@ -719,8 +1189,71 @@ function notify_order_placed(int $orderId): void
             $body,
             'From: ' . config('store.support_email') . "\r\nContent-Type: text/plain; charset=UTF-8"
         );
+
+        // Customer confirmation email (HTML)
+        if (!empty($customer['email'])) {
+            try {
+                $billing = decode_json($order['billing_json']);
+                $shipping = decode_json($order['shipping_json']);
+                ob_start();
+                require APP_PATH . '/views/emails/order-placed.php';
+                $html = (string) ob_get_clean();
+                @mail(
+                    (string) $customer['email'],
+                    'Order confirmation ' . $order['order_no'] . ' — Ronak Fire India',
+                    $html,
+                    'From: ' . config('store.support_email') . "\r\nMIME-Version: 1.0\r\nContent-Type: text/html; charset=UTF-8"
+                );
+            } catch (Throwable $e) {
+                error_log('Customer order email failed: ' . $e->getMessage());
+            }
+        }
     } catch (Throwable $e) {
         error_log('Order notification failed: ' . $e->getMessage());
+    }
+}
+
+function notify_order_status_changed(int $orderId, string $oldStatus, string $newStatus): void
+{
+    if (!config('store.notify_orders', false)) {
+        return;
+    }
+    try {
+        $order = db()->one('SELECT * FROM orders WHERE id = ?', [$orderId]);
+        if (!$order) {
+            return;
+        }
+        $customer = db()->one('SELECT * FROM customers WHERE id = ?', [$order['customer_id']]);
+        if (empty($customer['email'])) {
+            return;
+        }
+
+        if ($newStatus === 'dispatched') {
+            ob_start();
+            require APP_PATH . '/views/emails/dispatch.php';
+            $html = (string) ob_get_clean();
+            @mail(
+                (string) $customer['email'],
+                'Your order ' . $order['order_no'] . ' has been dispatched — Ronak Fire India',
+                $html,
+                'From: ' . config('store.support_email') . "\r\nMIME-Version: 1.0\r\nContent-Type: text/html; charset=UTF-8"
+            );
+            return;
+        }
+
+        $subject = 'Order ' . $order['order_no'] . ' status updated to ' . order_status_label($newStatus);
+        $body = "Hello " . ($customer['contact_name'] ?: $customer['company_name']) . ",\n\n"
+            . 'Your order ' . $order['order_no'] . ' status has been updated from ' . order_status_label($oldStatus) . ' to ' . order_status_label($newStatus) . ".\n\n"
+            . 'View order: ' . abs_url('/order/' . $order['order_no']) . "\n\n"
+            . 'Ronak Fire India Pvt. Ltd.';
+        @mail(
+            (string) $customer['email'],
+            $subject,
+            $body,
+            'From: ' . config('store.support_email') . "\r\nContent-Type: text/plain; charset=UTF-8"
+        );
+    } catch (Throwable $e) {
+        error_log('Order status notification failed: ' . $e->getMessage());
     }
 }
 
@@ -749,4 +1282,127 @@ function notify_enquiry(array $form, ?array $product, string $configuration, int
     } catch (Throwable $e) {
         error_log('Enquiry notification failed: ' . $e->getMessage());
     }
+}
+
+function notify_cart_quote(int $enquiryId, array $customer, array $form, array $items, array $totals, ?string $pdfPath = null): void
+{
+    if (!config('store.notify_orders', false)) {
+        return;
+    }
+    try {
+        $lines = [];
+        foreach ($items as $item) {
+            $options = json_decode((string) ($item['options_json'] ?? ''), true) ?? [];
+            $optSummary = '';
+            if (!empty($options['summary']) && is_array($options['summary'])) {
+                $optSummary = ' [' . implode(', ', $options['summary']) . ']';
+            }
+            $lines[] = sprintf(
+                "%d × %s (SKU: %s) — %s%s",
+                (int) $item['qty'],
+                $item['name'],
+                $item['sku'],
+                money((int) $item['line_total_paise']),
+                $optSummary
+            );
+        }
+
+        $body = "New cart quote request from website\n\n"
+            . 'Enquiry ID: #' . $enquiryId . "\n"
+            . 'Customer: ' . ($customer['company_name'] ?? '') . "\n"
+            . 'Contact: ' . ($customer['contact_name'] ?? '') . "\n"
+            . 'Email: ' . ($customer['email'] ?? '') . "\n"
+            . 'Phone: ' . ($customer['phone'] ?? '') . "\n"
+            . 'GSTIN: ' . ($customer['gstin'] ?? '') . "\n"
+            . 'PO Number: ' . ($form['po_number'] ?? '') . "\n"
+            . 'Notes: ' . ($form['notes'] ?? '') . "\n\n"
+            . 'ITEMS:' . "\n"
+            . implode("\n", $lines) . "\n\n"
+            . 'Subtotal: ' . money((int) $totals['subtotal_paise']) . "\n"
+            . 'GST: ' . money((int) $totals['gst_paise']) . "\n"
+            . 'Total: ' . money((int) $totals['total_paise']) . "\n\n"
+            . 'View in admin: ' . abs_url('/admin/enquiries/' . $enquiryId) . "\n"
+            . 'Customer account: ' . abs_url('/admin/customers/' . (int) $customer['id']);
+
+        $to = (string) config('store.order_email', config('store.support_email'));
+        $subject = 'Cart quote request #' . $enquiryId . ' — ' . ($customer['company_name'] ?? '');
+        $headers = 'From: ' . config('store.support_email') . "\r\nContent-Type: text/plain; charset=UTF-8";
+
+        if ($pdfPath && is_file($pdfPath)) {
+            $filename = 'Quote-RF-ENQ-' . $enquiryId . '.pdf';
+            $fileContent = file_get_contents($pdfPath);
+            if ($fileContent !== false) {
+                $boundary = md5((string) microtime());
+                $headers = "From: " . config('store.support_email') . "\r\n"
+                    . "MIME-Version: 1.0\r\n"
+                    . "Content-Type: multipart/mixed; boundary=\"" . $boundary . "\"";
+                $message = "--" . $boundary . "\r\n"
+                    . "Content-Type: text/plain; charset=UTF-8\r\n"
+                    . "Content-Transfer-Encoding: 7bit\r\n\r\n"
+                    . $body . "\r\n\r\n"
+                    . "--" . $boundary . "\r\n"
+                    . "Content-Type: application/pdf; name=\"" . $filename . "\"\r\n"
+                    . "Content-Transfer-Encoding: base64\r\n"
+                    . "Content-Disposition: attachment; filename=\"" . $filename . "\"\r\n\r\n"
+                    . chunk_split(base64_encode($fileContent)) . "\r\n"
+                    . "--" . $boundary . "--";
+                @mail($to, $subject, $message, $headers);
+                // Still send customer ack
+                if (!empty($customer['email'])) {
+                    ob_start();
+                    require APP_PATH . '/views/emails/quote-received.php';
+                    $html = (string) ob_get_clean();
+                    @mail(
+                        (string) $customer['email'],
+                        'Your requirement is with our sales team — Ronak Fire India',
+                        $html,
+                        'From: ' . config('store.support_email') . "\r\nMIME-Version: 1.0\r\nContent-Type: text/html; charset=UTF-8"
+                    );
+                }
+                return;
+            }
+        }
+
+        @mail($to, $subject, $body, $headers);
+
+        // Customer acknowledgement
+        if (!empty($customer['email'])) {
+            ob_start();
+            require APP_PATH . '/views/emails/quote-received.php';
+            $html = (string) ob_get_clean();
+            @mail(
+                (string) $customer['email'],
+                'Your requirement is with our sales team — Ronak Fire India',
+                $html,
+                'From: ' . config('store.support_email') . "\r\nMIME-Version: 1.0\r\nContent-Type: text/html; charset=UTF-8"
+            );
+        }
+    } catch (Throwable $e) {
+        error_log('Cart quote notification failed: ' . $e->getMessage());
+    }
+}
+
+
+function ctrl_account_inventory(): void
+{
+    require_customer();
+    $customer = current_customer();
+    render('account/inventory', [
+        'pageTitle' => 'Inventory | Ronak Fire Store',
+        'bodyClass' => 'page-account',
+        'customer' => $customer,
+        'activeNav' => '/account',
+    ]);
+}
+
+function ctrl_account_documents(): void
+{
+    require_customer();
+    $customer = current_customer();
+    render('account/documents', [
+        'pageTitle' => 'Documents | Ronak Fire Store',
+        'bodyClass' => 'page-account',
+        'customer' => $customer,
+        'activeNav' => '/account',
+    ]);
 }

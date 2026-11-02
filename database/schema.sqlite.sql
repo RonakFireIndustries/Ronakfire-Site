@@ -34,6 +34,8 @@ CREATE TABLE IF NOT EXISTS products (
     gst_rate_bp INTEGER NOT NULL DEFAULT 1800,
     min_qty INTEGER NOT NULL DEFAULT 1,
     lead_time TEXT,
+    stock_qty INTEGER,
+    stock_updated_at TEXT,
     warranty TEXT,
     is_featured INTEGER NOT NULL DEFAULT 0,
     is_active INTEGER NOT NULL DEFAULT 1,
@@ -108,7 +110,8 @@ CREATE TABLE IF NOT EXISTS customers (
     is_active INTEGER NOT NULL DEFAULT 1,
     last_login_at TEXT,
     created_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL
+    updated_at TEXT NOT NULL,
+    portal_synced_at TEXT
 );
 
 CREATE TABLE IF NOT EXISTS carts (
@@ -154,6 +157,9 @@ CREATE TABLE IF NOT EXISTS orders (
     confirmed_at TEXT,
     invoiced_at TEXT,
     dispatched_at TEXT,
+    courier_name TEXT,
+    tracking_no TEXT,
+    tracking_url TEXT,
     delivered_at TEXT,
     cancelled_at TEXT,
     created_at TEXT NOT NULL,
@@ -206,6 +212,23 @@ CREATE TABLE IF NOT EXISTS admin_users (
     created_at TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS customer_addresses (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    customer_id INTEGER NOT NULL,
+    label TEXT NOT NULL DEFAULT 'Default',
+    company_name TEXT,
+    contact_name TEXT,
+    phone TEXT,
+    address_line1 TEXT NOT NULL,
+    address_line2 TEXT,
+    city TEXT NOT NULL,
+    state TEXT NOT NULL,
+    pincode TEXT NOT NULL,
+    is_default INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS settings (
     key TEXT PRIMARY KEY,
     value TEXT
@@ -217,3 +240,7 @@ CREATE INDEX IF NOT EXISTS idx_option_values_group ON option_values (group_id);
 CREATE INDEX IF NOT EXISTS idx_orders_customer ON orders (customer_id, placed_at);
 CREATE INDEX IF NOT EXISTS idx_orders_status ON orders (status);
 CREATE INDEX IF NOT EXISTS idx_enquiries_status ON enquiries (status, created_at);
+
+-- Add guest support to carts
+ALTER TABLE carts ADD COLUMN guest_id TEXT;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_carts_guest ON carts(guest_id);

@@ -188,43 +188,35 @@ $summary = $initialQuote['summary'] ?? [];
                     <?php endif; ?>
 
                     <div class="buy-panel">
-                        <div class="buy-panel__price">
-                            <?php if ($authed): ?>
-                                <span class="buy-panel__label">Your account price</span>
-                                <div class="buy-panel__amount">
-                                    <strong data-unit-price><?= money($unitPrice) ?></strong>
-                                    <span>per <?= e($product['unit']) ?></span>
-                                </div>
-                                <p class="buy-panel__tax">Excludes <?= gst_label($gstBp) ?> GST · Freight confirmed by sales</p>
-                                <?php if ((int) ($customer['discount_bp'] ?? 0) > 0): ?>
-                                    <span class="buy-panel__discount"><?= rtrim(rtrim(number_format($customer['discount_bp'] / 100, 2, '.', ''), '0'), '.') ?>% account discount applied</span>
-                                <?php endif; ?>
-                            <?php else: ?>
-                                <div class="price-locked">
-                                    <span class="price-locked__icon"><?= icon('lock') ?></span>
-                                    <div>
-                                        <strong>Trade price hidden</strong>
-                                        <p>Sign in with your approved dealer or contractor account to see your price and order.</p>
-                                    </div>
-                                </div>
-                            <?php endif; ?>
-                        </div>
-
                         <div class="buy-panel__actions">
-                            <div class="qty-stepper" data-qty>
-                                <button type="button" data-qty-down aria-label="Decrease quantity"><?= icon('minus') ?></button>
-                                <label class="sr-only" for="qty">Quantity</label>
-                                <input id="qty" name="qty" type="number" value="<?= max(1, (int) $product['min_qty']) ?>" min="<?= max(1, (int) $product['min_qty']) ?>" max="999" inputmode="numeric">
-                                <button type="button" data-qty-up aria-label="Increase quantity"><?= icon('plus') ?></button>
-                            </div>
-                            <button class="btn btn--primary btn--lg btn--block" type="submit" data-add-to-cart>
-                                <?= icon('cart') ?>
-                                <span><?= $authed ? 'Add to order' : 'Sign in to order' ?></span>
-                            </button>
-                            <a class="btn btn--outline btn--block" href="/quote?product=<?= e($product['slug']) ?>">Request a quote for this specification</a>
+                            <span>Quantity </span>
+                        <div class="qty-stepper" data-qty>
+                            <button type="button" data-qty-down aria-label="Decrease quantity"><?= icon('minus') ?></button>
+                            <label class="sr-only" for="qty">Quantity</label>
+                            <input id="qty" name="qty" type="number" value="<?= max(1, (int) $product['min_qty']) ?>" min="<?= max(1, (int) $product['min_qty']) ?>" max="999" inputmode="numeric">
+                            <button type="button" data-qty-up aria-label="Increase quantity"><?= icon('plus') ?></button>
                         </div>
+                        <button class="btn btn--primary btn--lg btn--block" type="submit" data-add-to-cart>
+                            <?= icon('cart') ?>
+                            <span>Add to order</span>
+                        </button>
+                    </div>
 
                         <ul class="buy-panel__meta">
+                            <?php
+                            $stockQty = isset($product['stock_qty']) && $product['stock_qty'] !== null ? (int) $product['stock_qty'] : null;
+                            $stockLabel = 'Made to order';
+                            if ($stockQty !== null) {
+                                if ($stockQty > 10) {
+                                    $stockLabel = 'In stock';
+                                } elseif ($stockQty > 0) {
+                                    $stockLabel = 'Low stock (' . $stockQty . ' left)';
+                                } else {
+                                    $stockLabel = 'Out of stock';
+                                }
+                            }
+                            ?>
+                            <li><?= icon('package') ?><span><small>Availability</small><strong><?= e($stockLabel) ?></strong></span></li>
                             <li><?= icon('clock') ?><span><small>Lead time</small><strong><?= e($product['lead_time'] ?: 'On confirmation') ?></strong></span></li>
                             <li><?= icon('shield') ?><span><small>Warranty</small><strong><?= e($product['warranty'] ?: 'As per standard terms') ?></strong></span></li>
                             <li><?= icon('truck') ?><span><small>Dispatch</small><strong>Palghar factory</strong></span></li>

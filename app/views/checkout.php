@@ -42,6 +42,7 @@ $errorFor = static fn (string $field): string => isset($errors[$field]) ? '<span
         <form class="checkout-layout" id="checkoutForm" action="/checkout" method="post" data-checkout>
             <?= csrf_field() ?>
             <div class="checkout-main">
+                <?php partial('address-selector', ['customer' => $customer]); ?>
                 <section class="form-card" aria-labelledby="billingHeading">
                     <div class="form-card__head">
                         <span class="form-card__step">01</span>

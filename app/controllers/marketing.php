@@ -67,3 +67,80 @@ function ctrl_refund_policy(): void
         'activeNav' => '',
     ]);
 }
+
+function ctrl_contact_post(): void
+{
+    require_csrf();
+
+    $honeypot = trim((string) post('website', ''));
+    $name     = trim((string) post('name', ''));
+    $company  = trim((string) post('company', ''));
+    $email    = trim((string) post('email', ''));
+    $phone    = trim((string) post('phone', ''));
+    $subject  = trim((string) post('subject', 'General enquiry'));
+    $message  = trim((string) post('message', ''));
+
+    $errors = [];
+    if ($honeypot !== '') {
+        $errors[] = 'Submission rejected.';
+    }
+    if ($name === '') {
+        $errors[] = 'Enter your name.';
+    }
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $errors[] = 'Enter a valid email address.';
+    }
+    if (strlen(preg_replace('/\D/', '', $phone)) < 10) {
+        $errors[] = 'Enter a phone number with at least 10 digits.';
+    }
+    if ($message === '') {
+        $errors[] = 'Enter your message.';
+    }
+
+    if ($errors) {
+        flash('error', implode(' ', $errors));
+        redirect('/contact');
+    }
+
+    $now = date('Y-m-d H:i:s');
+    $customer = current_customer();
+    db()->insert('enquiries', [
+        'customer_id'  => $customer['id'] ?? null,
+        'name'         => $name,
+        'company'      => $company,
+        'email'        => $email,
+        'phone'        => $phone,
+        'gstin'        => '',
+        'product_id'   => null,
+        'product_name' => $subject,
+        'qty'          => 0,
+        'configuration'=> '',
+        'message'      => $message,
+        'status'       => 'new',
+        'created_at'   => $now,
+        'updated_at'   => $now,
+    ]);
+
+    if (config('store.notify_orders', false)) {
+        try {
+            $body = "New contact form submission\n\n"
+                . 'Name: ' . $name . "\n"
+                . 'Company: ' . $company . "\n"
+                . 'Email: ' . $email . "\n"
+                . 'Phone: ' . $phone . "\n"
+                . 'Subject: ' . $subject . "\n\n"
+                . $message;
+            @mail(
+                (string) config('store.order_email', config('store.support_email')),
+                'Contact form: ' . $subject . ' — ' . $name,
+                $body,
+                'From: ' . config('store.support_email') . "\r\nContent-Type: text/plain; charset=UTF-8"
+            );
+        } catch (Throwable $e) {
+            error_log('Contact notification failed: ' . $e->getMessage());
+        }
+    }
+
+    flash('success', "Thank you, {$name}. We have received your message and will be in touch shortly.");
+    redirect('/contact?sent=1');
+}

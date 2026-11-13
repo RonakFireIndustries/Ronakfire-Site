@@ -58,7 +58,7 @@ foreach ($addresses as $a) {
                                         <button type="submit" class="link-btn">Make default</button>
                                     </form>
                                     <form action="/account/addresses/<?= (int) $addr['id'] ?>/delete" method="post" style="display:inline"
-                                          onsubmit="return confirm('Remove this address?')">
+                                          data-confirm="Remove this address?">
                                         <?= csrf_field() ?>
                                         <button type="submit" class="link-btn link-btn--danger">Remove</button>
                                     </form>

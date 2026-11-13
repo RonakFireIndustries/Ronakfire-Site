@@ -10,13 +10,12 @@ return [
     'app_url' => 'http://localhost:8080',
 
     'db' => [
-        'driver' => 'sqlite', // sqlite | mysql
-        'path' => __DIR__ . '/../storage/ronak.sqlite',
+        'driver' => 'mysql', // sqlite | mysql
         'host' => 'localhost',
         'port' => 3306,
-        'name' => 'ronak_store',
-        'user' => 'ronak_store',
-        'password' => '',
+        'name' => 'a17590e4_ronak_store',
+        'user' => 'a17590e4_root',
+        'password' => 'Predator@6565',
     ],
 
     'portal' => [
@@ -42,7 +41,7 @@ return [
         'min_order_paise' => 500000, // ₹5,000
         'freight_note' => 'Freight and dispatch will be confirmed by our sales team.',
         'order_email' => 'sales@ronakfire.com',
-        'notify_orders' => false,
+        'notify_orders' => true,
     ],
 
     'security' => [

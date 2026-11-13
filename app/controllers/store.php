@@ -268,7 +268,9 @@ function ctrl_cart_remove(): void
 
 function ctrl_cart_quote(): void
 {
-    require_csrf();
+    if (is_post()) {
+        require_csrf();
+    }
 
     $customer = current_customer();
     if ($customer) {
@@ -1034,7 +1036,7 @@ function ctrl_quote(): void
 
         if (!$errors) {
             $now = date('Y-m-d H:i:s');
-            db()->insert('enquiries', [
+            $enquiryId = (int) db()->insert('enquiries', [
                 'customer_id' => $customer['id'] ?? null,
                 'name' => $form['name'],
                 'company' => $form['company'],
@@ -1050,7 +1052,7 @@ function ctrl_quote(): void
                 'created_at' => $now,
                 'updated_at' => $now,
             ]);
-            notify_enquiry($form, $product, $configuration, (int) $form['qty']);
+            notify_enquiry($form, $product, $configuration, (int) $form['qty'], $enquiryId);
             redirect('/quote?sent=1');
         }
     }
@@ -1257,7 +1259,43 @@ function notify_order_status_changed(int $orderId, string $oldStatus, string $ne
     }
 }
 
-function notify_enquiry(array $form, ?array $product, string $configuration, int $qty): void
+/**
+ * Send the customer a "we have your requirement" acknowledgement.
+ *
+ * Works for logged-in customers and guests: the address entered on the form
+ * wins, then the account email. Safe to call when mail is disabled.
+ */
+function send_quote_ack(array $customer, array $form, array $items, ?array $totals = null, ?int $enquiryId = null): void
+{
+    if (!config('store.notify_orders', false)) {
+        return;
+    }
+    try {
+        $to = trim((string) ($form['email'] ?? ''));
+        if ($to === '' || !filter_var($to, FILTER_VALIDATE_EMAIL)) {
+            $to = trim((string) ($customer['email'] ?? ''));
+        }
+        if ($to === '' || !filter_var($to, FILTER_VALIDATE_EMAIL)) {
+            return;
+        }
+
+        ob_start();
+        require APP_PATH . '/views/emails/quote-acknowledgement.php';
+        $html = (string) ob_get_clean();
+
+        $subject = 'Your requirement is with our sales team — Ronak Fire India';
+        @mail(
+            $to,
+            $subject,
+            $html,
+            'From: ' . config('store.support_email') . "\r\nMIME-Version: 1.0\r\nContent-Type: text/html; charset=UTF-8"
+        );
+    } catch (Throwable $e) {
+        error_log('Quote acknowledgement failed: ' . $e->getMessage());
+    }
+}
+
+function notify_enquiry(array $form, ?array $product, string $configuration, int $qty, ?int $enquiryId = null): void
 {
     if (!config('store.notify_orders', false)) {
         return;
@@ -1272,13 +1310,21 @@ function notify_enquiry(array $form, ?array $product, string $configuration, int
             . 'Product: ' . ($product['name'] ?? 'General enquiry') . "\n"
             . 'Quantity: ' . $qty . "\n"
             . 'Configuration: ' . $configuration . "\n\n"
-            . $form['message'];
+            . $form['message']
+            . ($enquiryId ? "\n\nView in admin: " . abs_url('/admin/enquiries/' . $enquiryId) : '');
         @mail(
             (string) config('store.order_email', config('store.support_email')),
             'New quote request from ' . $form['company'],
             $body,
             'From: ' . config('store.support_email') . "\r\nContent-Type: text/plain; charset=UTF-8"
         );
+
+        send_quote_ack([], $form, [[
+            'product_name' => $product['name'] ?? 'General enquiry',
+            'sku' => $product['sku'] ?? '',
+            'qty' => max(1, $qty),
+            'line_total_paise' => null,
+        ]], null, $enquiryId);
     } catch (Throwable $e) {
         error_log('Enquiry notification failed: ' . $e->getMessage());
     }
@@ -1309,11 +1355,11 @@ function notify_cart_quote(int $enquiryId, array $customer, array $form, array $
 
         $body = "New cart quote request from website\n\n"
             . 'Enquiry ID: #' . $enquiryId . "\n"
-            . 'Customer: ' . ($customer['company_name'] ?? '') . "\n"
-            . 'Contact: ' . ($customer['contact_name'] ?? '') . "\n"
-            . 'Email: ' . ($customer['email'] ?? '') . "\n"
-            . 'Phone: ' . ($customer['phone'] ?? '') . "\n"
-            . 'GSTIN: ' . ($customer['gstin'] ?? '') . "\n"
+            . 'Customer: ' . ($form['company_name'] ?? $customer['company_name'] ?? '') . "\n"
+            . 'Contact: ' . ($form['contact_name'] ?? $customer['contact_name'] ?? '') . "\n"
+            . 'Email: ' . ($form['email'] ?? $customer['email'] ?? '') . "\n"
+            . 'Phone: ' . ($form['phone'] ?? $customer['phone'] ?? '') . "\n"
+            . 'GSTIN: ' . ($form['gstin'] ?? $customer['gstin'] ?? '') . "\n"
             . 'PO Number: ' . ($form['po_number'] ?? '') . "\n"
             . 'Notes: ' . ($form['notes'] ?? '') . "\n\n"
             . 'ITEMS:' . "\n"
@@ -1321,11 +1367,11 @@ function notify_cart_quote(int $enquiryId, array $customer, array $form, array $
             . 'Subtotal: ' . money((int) $totals['subtotal_paise']) . "\n"
             . 'GST: ' . money((int) $totals['gst_paise']) . "\n"
             . 'Total: ' . money((int) $totals['total_paise']) . "\n\n"
-            . 'View in admin: ' . abs_url('/admin/enquiries/' . $enquiryId) . "\n"
-            . 'Customer account: ' . abs_url('/admin/customers/' . (int) $customer['id']);
+            . 'View in admin: ' . abs_url('/admin/enquiries/' . $enquiryId)
+            . ($customer ? "\nCustomer account: " . abs_url('/admin/customers/' . (int) $customer['id']) : '');
 
         $to = (string) config('store.order_email', config('store.support_email'));
-        $subject = 'Cart quote request #' . $enquiryId . ' — ' . ($customer['company_name'] ?? '');
+        $subject = 'Cart quote request #' . $enquiryId . ' — ' . ($form['company_name'] ?? $customer['company_name'] ?? '');
         $headers = 'From: ' . config('store.support_email') . "\r\nContent-Type: text/plain; charset=UTF-8";
 
         if ($pdfPath && is_file($pdfPath)) {
@@ -1348,17 +1394,7 @@ function notify_cart_quote(int $enquiryId, array $customer, array $form, array $
                     . "--" . $boundary . "--";
                 @mail($to, $subject, $message, $headers);
                 // Still send customer ack
-                if (!empty($customer['email'])) {
-                    ob_start();
-                    require APP_PATH . '/views/emails/quote-received.php';
-                    $html = (string) ob_get_clean();
-                    @mail(
-                        (string) $customer['email'],
-                        'Your requirement is with our sales team — Ronak Fire India',
-                        $html,
-                        'From: ' . config('store.support_email') . "\r\nMIME-Version: 1.0\r\nContent-Type: text/html; charset=UTF-8"
-                    );
-                }
+                send_quote_ack($customer, $form, $items, $totals, $enquiryId);
                 return;
             }
         }
@@ -1366,17 +1402,7 @@ function notify_cart_quote(int $enquiryId, array $customer, array $form, array $
         @mail($to, $subject, $body, $headers);
 
         // Customer acknowledgement
-        if (!empty($customer['email'])) {
-            ob_start();
-            require APP_PATH . '/views/emails/quote-received.php';
-            $html = (string) ob_get_clean();
-            @mail(
-                (string) $customer['email'],
-                'Your requirement is with our sales team — Ronak Fire India',
-                $html,
-                'From: ' . config('store.support_email') . "\r\nMIME-Version: 1.0\r\nContent-Type: text/html; charset=UTF-8"
-            );
-        }
+        send_quote_ack($customer, $form, $items, $totals, $enquiryId);
     } catch (Throwable $e) {
         error_log('Cart quote notification failed: ' . $e->getMessage());
     }

@@ -15,6 +15,10 @@ AddType video/mp4 .mp4
 # --- Disable directory listing ---
 Options -Indexes
 
+# Serve the storefront front controller for the document root. This also
+# overrides any old cPanel parking index.html left in public_html.
+DirectoryIndex store.php
+
 # --- Block access to backups, databases and other non-public files ---
 <FilesMatch "\.(zip|rar|7z|tar|gz|sql|sqlite|db|bak|old|orig|log|ini|env|sh|dist|map)$">
   Require all denied
@@ -38,6 +42,12 @@ Options -Indexes
   AddOutputFilterByType DEFLATE text/html text/plain text/css text/xml application/javascript application/json application/xml image/svg+xml
 </IfModule>
 
+# --- Favicon.ico fallback: redirect to PNG favicon ---
+<IfModule mod_rewrite.c>
+  RewriteEngine on
+  RewriteRule ^favicon\.ico$ /images/favicon/favicon-32x32.png [L,NC]
+</IfModule>
+
 # --- Browser caching ---
 <IfModule mod_expires.c>
   ExpiresActive On
@@ -58,7 +68,7 @@ Options -Indexes
   RewriteEngine On
 
   # Private application directories and local configuration.
-  RewriteRule ^(?:app|bin|database|docs|legacy|storage)(?:/|$) - [F,L,NC]
+  RewriteRule ^(?:app|bin|database|docs|legacy|storage|vendor)(?:/|$) - [F,L,NC]
   RewriteRule ^config\.local\.php$ - [F,L,NC]
   # Local-only tooling and reference config.
   RewriteRule ^(?:dev-router\.php|config\.example\.php)$ - [F,L,NC]
@@ -85,8 +95,10 @@ Options -Indexes
   # --- Trade store front controller ---
   # Real files and directories keep being served directly. Store URLs are
   # handed to store.php, which resolves the route from REQUEST_URI.
-  RewriteCond %{REQUEST_FILENAME} !-f
-  RewriteCond %{REQUEST_FILENAME} !-d
+  #
+  # The root is a directory, so it must be rewritten before the !-d check
+  # below; otherwise Apache falls back to DirectoryIndex (and an old parking
+  # index.html can return 403).
   RewriteRule ^$ store.php [L,QSA]
 
   RewriteCond %{REQUEST_FILENAME} !-f

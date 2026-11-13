@@ -3,13 +3,17 @@
 /** @var array $counts */
 /** @var array $featured */
 /** @var int $totalProducts */
-$heroProduct = $featured[0] ?? null;
 $phone = setting('support_phone', config('store.support_phone'));
 $phoneHref = setting('support_phone_href', config('store.support_phone_href'));
 ?>
-<section class="hero">
-    <div class="hero__grid-lines" aria-hidden="true"></div>
-    <div class="container hero__grid">
+<section class="hero hero--video">
+    <div class="hero__backdrop" aria-hidden="true">
+        <video class="hero__video" autoplay loop muted playsinline preload="metadata"
+            poster="/images/banner/main-banner.jpg">
+            <source src="/images/banner/banner-video.mp4" type="video/mp4">
+        </video>
+    </div>
+    <div class="container hero__grid hero__grid--single">
         <div class="hero__copy">
             <p class="eyebrow eyebrow--light"><span></span> Manufacturer-direct fire protection</p>
             <h1>Specified for the project.<br><span>Built for the worst day.</span></h1>
@@ -38,23 +42,6 @@ $phoneHref = setting('support_phone_href', config('store.support_phone_href'));
                     <dd>Project dispatch</dd>
                 </div>
             </dl>
-        </div>
-
-        <div class="hero__visual" aria-hidden="true">
-            <div class="hero__panel">
-                <video class="hero__video" autoplay loop muted playsinline poster="/images/banner/main-banner.jpg">
-                    <source src="/images/banner/banner-video.mp4" type="video/mp4">
-                </video>
-                <span class="hero__panel-tag">IS / BIS tested</span>
-                <span class="hero__panel-caption"><?= e($heroProduct['name'] ?? 'Fire extinguishers') ?></span>
-            </div>
-            <div class="hero__float hero__float--spec">
-                <span class="hero__float-icon"><?= icon('shield') ?></span>
-                <div><strong>Batch tested</strong><small>Traceable to dispatch</small></div>
-            </div>
-            <div class="hero__rule">
-                <span>01</span><span>Specify</span><span>02</span><span>Configure</span><span>03</span><span>Order</span>
-            </div>
         </div>
     </div>
 </section>

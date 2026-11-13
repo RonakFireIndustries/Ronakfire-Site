@@ -11,14 +11,16 @@ return [
         'driver' => 'mysql',
         'host' => 'localhost',
         'port' => 3306,
-        'name' => 'cpaneluser_ronak_store',
-        'user' => 'cpaneluser_ronak',
+        // Use the exact names cPanel created (usually CPANELUSER_name).
+        'name' => 'CPANELUSER_ronak_store',
+        'user' => 'CPANELUSER_ronak',
         'password' => 'CHANGE_ME',
     ],
 
     'portal' => [
-        // Shared secret used by rfipl.ronakfire.com to sign the customer JWT.
-        'jwt_secret' => 'CHANGE_ME_TO_A_LONG_RANDOM_STRING',
+        // Leave empty to use the email + password login form on /login.
+        // Only set this when rfipl.ronakfire.com is live and should own sign-in.
+        'jwt_secret' => '',
         // Adjust if the portal uses different paths.
         'login_url' => 'https://rfipl.ronakfire.com/login',
         'logout_url' => 'https://rfipl.ronakfire.com/logout',
@@ -31,6 +33,13 @@ return [
         'order_email' => 'sales@ronakfire.com',
         'gstin' => '',
         'notify_orders' => true,
+    ],
+
+    'mail' => [
+        // cPanel sends through the local mail server; create the mailbox first.
+        'driver' => 'mail',
+        'from' => 'sales@ronakfire.com',
+        'from_name' => 'Ronak Fire India',
     ],
 
     'security' => [

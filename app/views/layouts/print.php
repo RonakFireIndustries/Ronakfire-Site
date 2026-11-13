@@ -10,15 +10,12 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="<?= e(asset('assets/css/print.css')) ?>">
 </head>
-<body>
+<body<?= isset($_GET['pdf']) ? ' data-autoprint' : '' ?>>
 <div class="print-toolbar no-print">
     <a href="/account/orders">← Back to orders</a>
     <button type="button" data-print>Print / save as PDF</button>
 </div>
 <?= $content ?>
-<?php if (isset($_GET['pdf'])): ?>
-<script>window.addEventListener('load', function(){ setTimeout(function(){ window.print(); }, 400); });</script>
-<?php endif; ?>
 <script src="<?= e(asset('assets/js/print.js')) ?>" defer></script>
 </body>
 </html>

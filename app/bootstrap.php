@@ -27,6 +27,7 @@ if (is_file(BASE_PATH . '/config.local.php')) {
 $GLOBALS['rf_config'] = $config;
 
 require __DIR__ . '/helpers.php';
+require_once __DIR__ . '/QuotePdf.php';
 
 spl_autoload_register(static function (string $class): void {
     $prefix = 'App\\';

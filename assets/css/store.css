@@ -993,6 +993,66 @@ code {
     radial-gradient(circle at 20% 100%, rgba(38, 78, 108, 0.5), transparent 48%);
   pointer-events: none;
 }
+
+/* Home hero: full-bleed video background */
+.hero--video {
+  display: flex;
+  align-items: center;
+  min-height: clamp(540px, 80vh, 760px);
+  background: #050d14;
+}
+.hero__backdrop {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  z-index: 0;
+  background: #050d14 url("/images/banner/main-banner.jpg") center / cover no-repeat;
+}
+.hero__backdrop .hero__video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.hero__backdrop::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(
+      90deg,
+      rgba(4, 11, 18, 0.96) 0%,
+      rgba(4, 11, 18, 0.86) 42%,
+      rgba(4, 11, 18, 0.52) 100%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(4, 11, 18, 0.35) 0%,
+      rgba(4, 11, 18, 0.55) 62%,
+      rgba(4, 11, 18, 0.9) 100%
+    );
+  pointer-events: none;
+}
+.hero--video::before,
+.hero--video .hero__grid-lines {
+  z-index: 1;
+}
+.hero--video .hero__grid {
+  position: relative;
+  z-index: 2;
+}
+.hero__grid--single {
+  grid-template-columns: minmax(0, 1fr);
+}
+.hero__grid--single .hero__copy {
+  max-width: 780px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero--video .hero__video {
+    display: none;
+  }
+}
 .hero__grid-lines {
   position: absolute;
   inset: 0;
@@ -5757,6 +5817,10 @@ code {
 
   .hero {
     padding: 38px 0 48px;
+  }
+  .hero--video {
+    display: block;
+    min-height: 0;
   }
   .hero__copy h1 {
     font-size: 2.2rem;

@@ -18,6 +18,12 @@
             });
         });
 
+        if (document.body.hasAttribute('data-autoprint')) {
+            window.setTimeout(function () {
+                window.print();
+            }, 400);
+        }
+
         document.addEventListener('keydown', function (event) {
             if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'p') {
                 event.preventDefault();

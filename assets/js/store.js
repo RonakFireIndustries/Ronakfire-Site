@@ -416,14 +416,36 @@
     function initCheckout() {
         var same = qs('[data-ship-same]');
         var fields = qs('[data-ship-fields]');
-        if (!same || !fields) {
-            return;
+        if (same && fields) {
+            var sync = function () {
+                fields.hidden = same.checked;
+            };
+            same.addEventListener('change', sync);
+            sync();
         }
-        var sync = function () {
-            fields.hidden = same.checked;
-        };
-        same.addEventListener('change', sync);
-        sync();
+
+        /* Clicking a saved address fills the checkout form. */
+        document.addEventListener('click', function (event) {
+            var button = event.target.closest ? event.target.closest('[data-address-select]') : null;
+            if (!button) {
+                return;
+            }
+            event.preventDefault();
+            var set = function (name, value) {
+                var field = qs('[name="' + name + '"]');
+                if (field) {
+                    field.value = value || '';
+                }
+            };
+            set('company_name', button.getAttribute('data-company'));
+            set('contact_name', button.getAttribute('data-contact'));
+            set('phone', button.getAttribute('data-phone'));
+            set('address_line1', button.getAttribute('data-line1'));
+            set('address_line2', button.getAttribute('data-line2'));
+            set('city', button.getAttribute('data-city'));
+            set('state', button.getAttribute('data-state'));
+            set('pincode', button.getAttribute('data-pincode'));
+        });
     }
 
     /* ----------------------------------------------------------------------

@@ -38,6 +38,7 @@ $router->post('cart/add', 'ctrl_cart_add');
 $router->post('cart/update', 'ctrl_cart_update');
 $router->post('cart/remove', 'ctrl_cart_remove');
 $router->post('cart/quote', 'ctrl_cart_quote');
+$router->get('cart/quote', 'ctrl_cart_quote');
 
 /* -------------------------------------------------------------------------
    Checkout & orders

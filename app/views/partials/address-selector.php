@@ -36,26 +36,4 @@ try {
         <?php endforeach; ?>
     </div>
 </div>
-<script>
-(function(){
-    const buttons = document.querySelectorAll('[data-address-select]');
-    buttons.forEach(btn => {
-        btn.addEventListener('click', () => {
-            const set = (name, val) => {
-                const el = document.querySelector('[name="' + name + '"]');
-                if (el) el.value = val || '';
-            };
-            set('company_name', btn.getAttribute('data-company'));
-            set('contact_name', btn.getAttribute('data-contact'));
-            set('phone', btn.getAttribute('data-phone'));
-            set('address_line1', btn.getAttribute('data-line1'));
-            set('address_line2', btn.getAttribute('data-line2'));
-            set('city', btn.getAttribute('data-city'));
-            const stateSel = document.querySelector('[name="state"]');
-            if (stateSel) stateSel.value = btn.getAttribute('data-state') || '';
-            set('pincode', btn.getAttribute('data-pincode'));
-        });
-    });
-})();
-</script>
 <?php endif; ?>

@@ -1048,6 +1048,7 @@ function ctrl_admin_customer_create(): void
     $customerCode = 'RF-' . strtoupper(substr(sha1($email), 0, 6));
 
     $customerId = db()->insert('customers', [
+        'portal_id' => $customerCode,
         'customer_code' => $customerCode,
         'company_name' => $company,
         'contact_name' => trim((string) post('contact_name', '')),

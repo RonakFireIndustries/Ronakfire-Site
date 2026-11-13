@@ -103,6 +103,8 @@ CREATE TABLE IF NOT EXISTS customers (
     city VARCHAR(100) NULL,
     state VARCHAR(100) NULL,
     pincode VARCHAR(16) NULL,
+    password_hash VARCHAR(255) NULL,
+    password_set_at DATETIME NULL,
     price_tier VARCHAR(64) NOT NULL DEFAULT 'standard',
     discount_bp INT NOT NULL DEFAULT 0,
     credit_days INT NOT NULL DEFAULT 0,

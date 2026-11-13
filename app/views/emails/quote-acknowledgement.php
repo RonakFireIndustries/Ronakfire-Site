@@ -15,10 +15,10 @@
  * @var int|null   $enquiryId
  */
 
+$enquiryId = $enquiryId ?? null;
 $contactName = trim((string) ($form['contact_name'] ?? $form['name'] ?? $customer['contact_name'] ?? ''));
 $companyName = trim((string) ($form['company_name'] ?? $form['company'] ?? $customer['company_name'] ?? ''));
 $reference = $enquiryId ? 'RF-ENQ-' . (int) $enquiryId : '';
-$showAmounts = is_array($totals) && array_key_exists('total_paise', $totals);
 $isCustomer = !empty($customer['id']);
 $actionUrl = $isCustomer ? abs_url('/account/enquiries') : abs_url('/catalog');
 $actionLabel = $isCustomer ? 'View your requests' : 'Browse the catalogue';
@@ -65,9 +65,6 @@ $supportEmail = setting('support_email', config('store.support_email'));
                                     <tr>
                                         <th style="text-align:left;padding:10px;border-bottom:1px solid #e2e8f0;color:#475569;font-size:12px;text-transform:uppercase;letter-spacing:0.05em;">Product</th>
                                         <th style="text-align:center;padding:10px;border-bottom:1px solid #e2e8f0;color:#475569;font-size:12px;text-transform:uppercase;letter-spacing:0.05em;">Qty</th>
-                                        <?php if ($showAmounts): ?>
-                                            <th style="text-align:right;padding:10px;border-bottom:1px solid #e2e8f0;color:#475569;font-size:12px;text-transform:uppercase;letter-spacing:0.05em;">Amount</th>
-                                        <?php endif; ?>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -76,30 +73,15 @@ $supportEmail = setting('support_email', config('store.support_email'));
                                     $itemName = (string) ($item['product_name'] ?? $item['name'] ?? '');
                                     $itemSku = (string) ($item['sku'] ?? '');
                                     $itemQty = (int) ($item['qty'] ?? 1);
-                                    $itemAmount = $item['line_total_paise'] ?? null;
                                     ?>
                                     <tr>
                                         <td style="padding:10px;border-bottom:1px solid #e2e8f0;">
                                             <?= e($itemName !== '' ? $itemName : 'Your requirement') ?><?= $itemSku !== '' ? ' (' . e($itemSku) . ')' : '' ?>
                                         </td>
                                         <td style="padding:10px;border-bottom:1px solid #e2e8f0;text-align:center;"><?= $itemQty ?></td>
-                                        <?php if ($showAmounts): ?>
-                                            <td style="padding:10px;border-bottom:1px solid #e2e8f0;text-align:right;">
-                                                <?= $itemAmount === null ? 'On request' : e(money((int) $itemAmount)) ?>
-                                            </td>
-                                        <?php endif; ?>
                                     </tr>
                                 <?php endforeach; ?>
                                 </tbody>
-                                <?php if ($showAmounts): ?>
-                                    <tfoot>
-                                        <tr>
-                                            <td style="padding:12px 10px;font-weight:bold;border-top:2px solid #b91c1c;">Estimated total</td>
-                                            <td style="padding:12px 10px;border-top:2px solid #b91c1c;"></td>
-                                            <td style="padding:12px 10px;font-weight:bold;border-top:2px solid #b91c1c;text-align:right;"><?= e(money((int) $totals['total_paise'])) ?></td>
-                                        </tr>
-                                    </tfoot>
-                                <?php endif; ?>
                             </table>
 
                             <?php if ($poNumber !== ''): ?>
@@ -110,7 +92,7 @@ $supportEmail = setting('support_email', config('store.support_email'));
                             <?php endif; ?>
 
                             <p style="margin:16px 0;">
-                                Prices shown are indicative. Freight, taxes and dispatch will be confirmed in our formal quotation.
+                                Pricing, GST and freight are not included in this acknowledgement. Our sales team will send the formal quotation separately.
                             </p>
                             <p style="margin:16px 0;">
                                 Questions? Call <a href="tel:<?= e($phoneHref) ?>" style="color:#b91c1c;"><?= e($phone) ?></a>

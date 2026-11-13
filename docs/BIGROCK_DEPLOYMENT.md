@@ -375,15 +375,19 @@ All quote mail is gated by `store.notify_orders`. Keep it `true` in
 
 | Request | To sales | To customer |
 |---|---|---|
-| `/quote` (single product or general enquiry) | Enquiry details | Acknowledgement, to the email entered on the form |
-| `/cart/quote` signed in | Cart lines, totals and the quote PDF | Acknowledgement, to the account/form email |
-| `/cart/quote` as a guest | Cart lines, totals and the quote PDF | Acknowledgement, to the email entered on the form |
+| `/quote` (single product or general enquiry) | Same HTML layout as the customer email, with customer details and an admin link | Acknowledgement, to the email entered on the form |
+| `/cart/quote` signed in | Same HTML layout, plus the quote PDF attached | Acknowledgement, to the account/form email |
+| `/cart/quote` as a guest | Same HTML layout, plus the quote PDF attached | Acknowledgement, to the email entered on the form |
 
-The customer acknowledgement uses
-`app/views/emails/quote-acknowledgement.php` and includes the reference
-`RF-ENQ-<id>`. `mail()` returns success once the message is handed to the
-local mail server, so confirm real delivery in cPanel → **Track Delivery**
-and by checking the mailbox, not from the browser.
+The sales notification uses `app/views/emails/quote-notification.php` and the
+customer acknowledgement uses `app/views/emails/quote-acknowledgement.php`;
+both share the same layout and include the reference `RF-ENQ-<id>`.
+Neither shows prices: they list items, quantities and specifications only, and
+state that pricing, GST and freight come in the formal quotation from the
+sales team.
+`mail()` returns success once the message is handed to the local mail server,
+so confirm real delivery in cPanel → **Track Delivery** and by checking the
+mailbox, not from the browser.
 
 ---
 

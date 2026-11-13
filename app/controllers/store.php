@@ -1287,11 +1287,27 @@ function send_quote_ack(array $customer, array $form, array $items, ?array $tota
         @mail(
             $to,
             $subject,
-            $html,
-            'From: ' . config('store.support_email') . "\r\nMIME-Version: 1.0\r\nContent-Type: text/html; charset=UTF-8"
+            chunk_split(base64_encode($html)),
+            'From: ' . config('store.support_email') . "\r\nMIME-Version: 1.0\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Transfer-Encoding: base64"
         );
     } catch (Throwable $e) {
         error_log('Quote acknowledgement failed: ' . $e->getMessage());
+    }
+}
+
+/**
+ * Render the internal sales notification using the same layout as the
+ * customer acknowledgement.
+ */
+function render_quote_notification(string $kind, array $form, array $customer, array $items, ?int $enquiryId, string $configuration = '', string $message = ''): string
+{
+    ob_start();
+    try {
+        require APP_PATH . '/views/emails/quote-notification.php';
+        return (string) ob_get_clean();
+    } catch (Throwable $e) {
+        ob_end_clean();
+        throw $e;
     }
 }
 
@@ -1301,30 +1317,30 @@ function notify_enquiry(array $form, ?array $product, string $configuration, int
         return;
     }
     try {
-        $body = "New quote request\n\n"
-            . 'Name: ' . $form['name'] . "\n"
-            . 'Company: ' . $form['company'] . "\n"
-            . 'Email: ' . $form['email'] . "\n"
-            . 'Phone: ' . $form['phone'] . "\n"
-            . 'GSTIN: ' . $form['gstin'] . "\n"
-            . 'Product: ' . ($product['name'] ?? 'General enquiry') . "\n"
-            . 'Quantity: ' . $qty . "\n"
-            . 'Configuration: ' . $configuration . "\n\n"
-            . $form['message']
-            . ($enquiryId ? "\n\nView in admin: " . abs_url('/admin/enquiries/' . $enquiryId) : '');
-        @mail(
-            (string) config('store.order_email', config('store.support_email')),
-            'New quote request from ' . $form['company'],
-            $body,
-            'From: ' . config('store.support_email') . "\r\nContent-Type: text/plain; charset=UTF-8"
-        );
-
-        send_quote_ack([], $form, [[
+        $items = [[
             'product_name' => $product['name'] ?? 'General enquiry',
             'sku' => $product['sku'] ?? '',
             'qty' => max(1, $qty),
-            'line_total_paise' => null,
-        ]], null, $enquiryId);
+        ]];
+
+        $html = render_quote_notification(
+            'enquiry',
+            $form,
+            [],
+            $items,
+            $enquiryId,
+            $configuration,
+            (string) ($form['message'] ?? '')
+        );
+
+        @mail(
+            (string) config('store.order_email', config('store.support_email')),
+            'New quote request from ' . $form['company'],
+            chunk_split(base64_encode($html)),
+            'From: ' . config('store.support_email') . "\r\nMIME-Version: 1.0\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Transfer-Encoding: base64"
+        );
+
+        send_quote_ack([], $form, $items, null, $enquiryId);
     } catch (Throwable $e) {
         error_log('Enquiry notification failed: ' . $e->getMessage());
     }
@@ -1336,56 +1352,32 @@ function notify_cart_quote(int $enquiryId, array $customer, array $form, array $
         return;
     }
     try {
-        $lines = [];
-        foreach ($items as $item) {
-            $options = json_decode((string) ($item['options_json'] ?? ''), true) ?? [];
-            $optSummary = '';
-            if (!empty($options['summary']) && is_array($options['summary'])) {
-                $optSummary = ' [' . implode(', ', $options['summary']) . ']';
-            }
-            $lines[] = sprintf(
-                "%d × %s (SKU: %s) — %s%s",
-                (int) $item['qty'],
-                $item['name'],
-                $item['sku'],
-                money((int) $item['line_total_paise']),
-                $optSummary
-            );
-        }
-
-        $body = "New cart quote request from website\n\n"
-            . 'Enquiry ID: #' . $enquiryId . "\n"
-            . 'Customer: ' . ($form['company_name'] ?? $customer['company_name'] ?? '') . "\n"
-            . 'Contact: ' . ($form['contact_name'] ?? $customer['contact_name'] ?? '') . "\n"
-            . 'Email: ' . ($form['email'] ?? $customer['email'] ?? '') . "\n"
-            . 'Phone: ' . ($form['phone'] ?? $customer['phone'] ?? '') . "\n"
-            . 'GSTIN: ' . ($form['gstin'] ?? $customer['gstin'] ?? '') . "\n"
-            . 'PO Number: ' . ($form['po_number'] ?? '') . "\n"
-            . 'Notes: ' . ($form['notes'] ?? '') . "\n\n"
-            . 'ITEMS:' . "\n"
-            . implode("\n", $lines) . "\n\n"
-            . 'Subtotal: ' . money((int) $totals['subtotal_paise']) . "\n"
-            . 'GST: ' . money((int) $totals['gst_paise']) . "\n"
-            . 'Total: ' . money((int) $totals['total_paise']) . "\n\n"
-            . 'View in admin: ' . abs_url('/admin/enquiries/' . $enquiryId)
-            . ($customer ? "\nCustomer account: " . abs_url('/admin/customers/' . (int) $customer['id']) : '');
+        $html = render_quote_notification(
+            'cart',
+            $form,
+            $customer,
+            $items,
+            $enquiryId,
+            '',
+            (string) ($form['notes'] ?? '')
+        );
 
         $to = (string) config('store.order_email', config('store.support_email'));
+        $from = (string) config('store.support_email');
         $subject = 'Cart quote request #' . $enquiryId . ' — ' . ($form['company_name'] ?? $customer['company_name'] ?? '');
-        $headers = 'From: ' . config('store.support_email') . "\r\nContent-Type: text/plain; charset=UTF-8";
 
         if ($pdfPath && is_file($pdfPath)) {
             $filename = 'Quote-RF-ENQ-' . $enquiryId . '.pdf';
             $fileContent = file_get_contents($pdfPath);
             if ($fileContent !== false) {
-                $boundary = md5((string) microtime());
-                $headers = "From: " . config('store.support_email') . "\r\n"
+                $boundary = 'rf-' . md5((string) microtime());
+                $headers = "From: " . $from . "\r\n"
                     . "MIME-Version: 1.0\r\n"
                     . "Content-Type: multipart/mixed; boundary=\"" . $boundary . "\"";
                 $message = "--" . $boundary . "\r\n"
-                    . "Content-Type: text/plain; charset=UTF-8\r\n"
-                    . "Content-Transfer-Encoding: 7bit\r\n\r\n"
-                    . $body . "\r\n\r\n"
+                    . "Content-Type: text/html; charset=UTF-8\r\n"
+                    . "Content-Transfer-Encoding: base64\r\n\r\n"
+                    . chunk_split(base64_encode($html)) . "\r\n"
                     . "--" . $boundary . "\r\n"
                     . "Content-Type: application/pdf; name=\"" . $filename . "\"\r\n"
                     . "Content-Transfer-Encoding: base64\r\n"
@@ -1399,7 +1391,12 @@ function notify_cart_quote(int $enquiryId, array $customer, array $form, array $
             }
         }
 
-        @mail($to, $subject, $body, $headers);
+        @mail(
+            $to,
+            $subject,
+            chunk_split(base64_encode($html)),
+            "From: " . $from . "\r\nMIME-Version: 1.0\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Transfer-Encoding: base64"
+        );
 
         // Customer acknowledgement
         send_quote_ack($customer, $form, $items, $totals, $enquiryId);

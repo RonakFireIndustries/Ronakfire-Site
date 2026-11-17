@@ -40,6 +40,11 @@ $customerName = $order['company_name'] ?: ($billing['company_name'] ?? 'Customer
         <strong><?= e($order['customer_code'] ?: '—') ?></strong>
         <small><?= e($order['price_tier'] ? ucfirst($order['price_tier']) . ' tier' : 'Standard tier') ?></small>
     </div>
+    <div class="admin-stat">
+        <span class="admin-stat__label">Sales owner</span>
+        <strong><?= e($order['sales_owner_name'] ?: 'Unassigned') ?></strong>
+        <small>Linked customer account</small>
+    </div>
 </div>
 
 <div class="admin-grid admin-grid--main">

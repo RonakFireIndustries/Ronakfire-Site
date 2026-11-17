@@ -27,15 +27,99 @@ function admin_url_id(array $params): int
     return max(0, (int) ($params['id'] ?? 0));
 }
 
+function admin_is_sales(): bool
+{
+    return Auth::isSales();
+}
+
+/**
+ * Sales users log in to the same admin panel but only work with their own
+ * customers. Catalog, staff and store settings stay with full admins.
+ */
+function admin_require_manager(): void
+{
+    if (admin_is_sales()) {
+        flash('error', 'That area is available to store administrators only.');
+        redirect('/admin');
+    }
+}
+
+/**
+ * SQL fragment + params that restrict a query to the signed-in sales user's
+ * customers. Full admins get every row.
+ *
+ * @return array{0: string, 1: array<int, mixed>}
+ */
+function admin_owner_scope(string $alias = 'c'): array
+{
+    if (!admin_is_sales()) {
+        return ['1 = 1', []];
+    }
+    $admin = Auth::admin();
+    return [$alias . '.sales_owner_id = ?', [(int) ($admin['id'] ?? 0)]];
+}
+
+/**
+ * Sales users that can own a customer. The signed-in user is always included
+ * so an admin-created customer keeps a valid owner in the dropdown.
+ */
+function admin_assignable_users(?int $includeId = null): array
+{
+    $admin = Auth::admin();
+    $currentId = (int) ($admin['id'] ?? 0);
+    return db()->all(
+        'SELECT id, name, email, role FROM admin_users
+         WHERE is_active = 1 AND (role = \'sales\' OR id = ? OR id = ?)
+         ORDER BY CASE WHEN role = \'sales\' THEN 0 ELSE 1 END, name',
+        [$currentId, (int) ($includeId ?? 0)]
+    );
+}
+
+/** Optional owner filter used by full admins on list screens. */
+function admin_owner_filter(): ?int
+{
+    if (admin_is_sales()) {
+        return null;
+    }
+    $owner = (int) input('owner', 0);
+    return $owner > 0 ? $owner : null;
+}
+
+function admin_find_customer(int $id): ?array
+{
+    [$scope, $params] = admin_owner_scope('c');
+    return db()->one(
+        'SELECT c.*, au.name AS sales_owner_name
+         FROM customers c LEFT JOIN admin_users au ON au.id = c.sales_owner_id
+         WHERE c.id = ? AND ' . $scope,
+        array_merge([$id], $params)
+    );
+}
+
+function admin_find_enquiry(int $id): ?array
+{
+    [$scope, $params] = admin_owner_scope('c');
+    return db()->one(
+        'SELECT e.*, c.company_name AS customer_company, c.sales_owner_id, au.name AS sales_owner_name
+         FROM enquiries e
+         LEFT JOIN customers c ON c.id = e.customer_id
+         LEFT JOIN admin_users au ON au.id = c.sales_owner_id
+         WHERE e.id = ? AND ' . $scope,
+        array_merge([$id], $params)
+    );
+}
+
 function admin_find_order(int $id): ?array
 {
+    [$scope, $params] = admin_owner_scope('c');
     return db()->one(
         'SELECT o.*, c.company_name, c.customer_code, c.contact_name AS customer_contact,
                 c.email AS customer_email, c.phone AS customer_phone, c.gstin AS customer_gstin,
-                c.price_tier, c.discount_bp
+                c.price_tier, c.discount_bp, c.sales_owner_id, au.name AS sales_owner_name
          FROM orders o JOIN customers c ON c.id = o.customer_id
-         WHERE o.id = ?',
-        [$id]
+         LEFT JOIN admin_users au ON au.id = c.sales_owner_id
+         WHERE o.id = ? AND ' . $scope,
+        array_merge([$id], $params)
     );
 }
 
@@ -170,31 +254,85 @@ function ctrl_admin_dashboard(): void
 {
     Auth::requireAdmin();
 
+    [$scope, $scopeParams] = admin_owner_scope('c');
     $since = date('Y-m-d H:i:s', time() - 30 * 86400);
+    $salesJoin = ' JOIN customers c ON c.id = o.customer_id WHERE ' . $scope;
+
     $stats = [
-        'new_orders' => (int) db()->value("SELECT COUNT(*) FROM orders WHERE status = 'placed'"),
-        'open_orders' => (int) db()->value("SELECT COUNT(*) FROM orders WHERE status IN ('placed','confirmed','invoiced','dispatched')"),
-        'orders_30d' => (int) db()->value('SELECT COUNT(*) FROM orders WHERE placed_at >= ?', [$since]),
-        'revenue_30d' => (int) db()->value('SELECT COALESCE(SUM(grand_total_paise),0) FROM orders WHERE placed_at >= ? AND status <> ?', [$since, 'cancelled']),
-        'customers' => (int) db()->value('SELECT COUNT(*) FROM customers WHERE is_active = 1'),
-        'new_enquiries' => (int) db()->value("SELECT COUNT(*) FROM enquiries WHERE status = 'new'"),
+        'new_orders' => (int) db()->value(
+            'SELECT COUNT(*) FROM orders o' . $salesJoin . " AND o.status = 'placed'",
+            $scopeParams
+        ),
+        'open_orders' => (int) db()->value(
+            'SELECT COUNT(*) FROM orders o' . $salesJoin . " AND o.status IN ('placed','confirmed','invoiced','dispatched')",
+            $scopeParams
+        ),
+        'orders_30d' => (int) db()->value(
+            'SELECT COUNT(*) FROM orders o' . $salesJoin . ' AND o.placed_at >= ?',
+            array_merge($scopeParams, [$since])
+        ),
+        'revenue_30d' => (int) db()->value(
+            'SELECT COALESCE(SUM(o.grand_total_paise),0) FROM orders o' . $salesJoin . ' AND o.placed_at >= ? AND o.status <> ?',
+            array_merge($scopeParams, [$since, 'cancelled'])
+        ),
+        'customers' => (int) db()->value(
+            'SELECT COUNT(*) FROM customers c WHERE c.is_active = 1 AND ' . $scope,
+            $scopeParams
+        ),
+        'new_enquiries' => (int) db()->value(
+            'SELECT COUNT(*) FROM enquiries e LEFT JOIN customers c ON c.id = e.customer_id
+             WHERE e.status = ? AND ' . $scope,
+            array_merge(['new'], $scopeParams)
+        ),
     ];
 
     $recentOrders = db()->all(
-        'SELECT o.*, c.company_name FROM orders o JOIN customers c ON c.id = o.customer_id
-         ORDER BY o.placed_at DESC, o.id DESC LIMIT 8'
+        'SELECT o.*, c.company_name, au.name AS sales_owner_name
+         FROM orders o JOIN customers c ON c.id = o.customer_id
+         LEFT JOIN admin_users au ON au.id = c.sales_owner_id
+         WHERE ' . $scope . ' ORDER BY o.placed_at DESC, o.id DESC LIMIT 8',
+        $scopeParams
     );
-    $recentEnquiries = db()->all('SELECT * FROM enquiries ORDER BY created_at DESC, id DESC LIMIT 6');
+    $recentEnquiries = db()->all(
+        'SELECT e.*, au.name AS sales_owner_name
+         FROM enquiries e LEFT JOIN customers c ON c.id = e.customer_id
+         LEFT JOIN admin_users au ON au.id = c.sales_owner_id
+         WHERE ' . $scope . ' ORDER BY e.created_at DESC, e.id DESC LIMIT 6',
+        $scopeParams
+    );
     $topProducts = db()->all(
         "SELECT oi.product_name, oi.sku, SUM(oi.qty) AS qty, SUM(oi.line_total_paise) AS value
          FROM order_items oi JOIN orders o ON o.id = oi.order_id
-         WHERE o.status <> 'cancelled'
-         GROUP BY oi.product_name, oi.sku ORDER BY qty DESC LIMIT 6"
+         JOIN customers c ON c.id = o.customer_id
+         WHERE o.status <> 'cancelled' AND " . $scope . '
+         GROUP BY oi.product_name, oi.sku ORDER BY qty DESC LIMIT 6',
+        $scopeParams
     );
-    $statusRows = db()->all('SELECT status, COUNT(*) AS total FROM orders GROUP BY status');
+    $statusRows = db()->all(
+        'SELECT o.status, COUNT(*) AS total FROM orders o JOIN customers c ON c.id = o.customer_id
+         WHERE ' . $scope . ' GROUP BY o.status',
+        $scopeParams
+    );
     $statusCounts = [];
     foreach ($statusRows as $row) {
         $statusCounts[$row['status']] = (int) $row['total'];
+    }
+
+    $salesSummary = [];
+    $unassignedCustomers = 0;
+    if (!admin_is_sales()) {
+        $salesSummary = db()->all(
+            "SELECT au.id, au.name, au.email,
+                    (SELECT COUNT(*) FROM customers c WHERE c.sales_owner_id = au.id AND c.is_active = 1) AS customer_count,
+                    (SELECT COUNT(*) FROM orders o JOIN customers c ON c.id = o.customer_id WHERE c.sales_owner_id = au.id) AS order_count,
+                    (SELECT COALESCE(SUM(o.grand_total_paise),0) FROM orders o JOIN customers c ON c.id = o.customer_id
+                     WHERE c.sales_owner_id = au.id AND o.status <> 'cancelled') AS order_value,
+                    (SELECT COUNT(*) FROM enquiries e JOIN customers c ON c.id = e.customer_id WHERE c.sales_owner_id = au.id) AS enquiry_count
+             FROM admin_users au
+             WHERE au.is_active = 1 AND au.role IN ('sales', 'admin')
+             ORDER BY order_value DESC, customer_count DESC, au.name"
+        );
+        $unassignedCustomers = (int) db()->value('SELECT COUNT(*) FROM customers WHERE sales_owner_id IS NULL');
     }
 
     admin_render('dashboard', [
@@ -206,6 +344,9 @@ function ctrl_admin_dashboard(): void
         'recentEnquiries' => $recentEnquiries,
         'topProducts' => $topProducts,
         'statusCounts' => $statusCounts,
+        'salesSummary' => $salesSummary,
+        'unassignedCustomers' => $unassignedCustomers,
+        'isSales' => admin_is_sales(),
     ]);
 }
 
@@ -216,6 +357,7 @@ function ctrl_admin_dashboard(): void
 function ctrl_admin_products(): void
 {
     Auth::requireAdmin();
+    admin_require_manager();
 
     $filters = [
         'q' => trim((string) input('q', '')),
@@ -273,6 +415,7 @@ function ctrl_admin_products(): void
 function ctrl_admin_product_form(array $params = []): void
 {
     Auth::requireAdmin();
+    admin_require_manager();
 
     $id = admin_url_id($params);
     $product = $id > 0 ? Catalog::findById($id) : null;
@@ -337,6 +480,7 @@ function ctrl_admin_product_form(array $params = []): void
 function ctrl_admin_product_save(): void
 {
     Auth::requireAdmin();
+    admin_require_manager();
     require_csrf();
 
     $id = (int) post('id', 0);
@@ -551,6 +695,7 @@ function admin_sync_option_groups(int $productId, array $groups): void
 function ctrl_admin_product_toggle(array $params): void
 {
     Auth::requireAdmin();
+    admin_require_manager();
     require_csrf();
     $id = admin_url_id($params);
     $product = $id > 0 ? Catalog::findById($id) : null;
@@ -571,6 +716,7 @@ function ctrl_admin_product_toggle(array $params): void
 function ctrl_admin_categories(): void
 {
     Auth::requireAdmin();
+    admin_require_manager();
     admin_render('categories', [
         'pageTitle' => 'Categories | Ronak Fire admin',
         'adminNav' => 'categories',
@@ -583,6 +729,7 @@ function ctrl_admin_categories(): void
 function ctrl_admin_categories_save(): void
 {
     Auth::requireAdmin();
+    admin_require_manager();
     require_csrf();
 
     $rows = $_POST['categories'] ?? [];
@@ -648,36 +795,45 @@ function ctrl_admin_orders(): void
 
     $status = trim((string) input('status', ''));
     $q = trim((string) input('q', ''));
+    $ownerFilter = admin_owner_filter();
     $page = max(1, (int) input('page', 1));
     $perPage = 20;
 
-    $where = '1';
-    $params = [];
+    [$scope, $params] = admin_owner_scope('c');
+    $where = $scope;
     if ($status !== '' && in_array($status, order_statuses(), true)) {
         $where .= ' AND o.status = ?';
         $params[] = $status;
     }
+    if ($ownerFilter !== null && !admin_is_sales()) {
+        $where .= ' AND c.sales_owner_id = ?';
+        $params[] = $ownerFilter;
+    }
     if ($q !== '') {
         $like = '%' . $q . '%';
-        $where .= ' AND (o.order_no LIKE ? OR c.company_name LIKE ? OR c.email LIKE ? OR o.po_number LIKE ?)';
-        array_push($params, $like, $like, $like, $like);
+        $where .= ' AND (o.order_no LIKE ? OR c.company_name LIKE ? OR c.email LIKE ? OR o.po_number LIKE ? OR au.name LIKE ?)';
+        array_push($params, $like, $like, $like, $like, $like);
     }
+    $join = ' FROM orders o JOIN customers c ON c.id = o.customer_id
+              LEFT JOIN admin_users au ON au.id = c.sales_owner_id WHERE ';
 
-    $total = (int) db()->value(
-        'SELECT COUNT(*) FROM orders o JOIN customers c ON c.id = o.customer_id WHERE ' . $where,
-        $params
-    );
+    $total = (int) db()->value('SELECT COUNT(*)' . $join . $where, $params);
     $pager = admin_pagination($total, $perPage, $page);
 
     $orders = db()->all(
-        'SELECT o.*, c.company_name, c.customer_code FROM orders o JOIN customers c ON c.id = o.customer_id
-         WHERE ' . $where . ' ORDER BY o.placed_at DESC, o.id DESC
+        'SELECT o.*, c.company_name, c.customer_code, c.sales_owner_id, au.name AS sales_owner_name' . $join
+        . $where . ' ORDER BY o.placed_at DESC, o.id DESC
          LIMIT ' . $perPage . ' OFFSET ' . $pager['offset'],
         $params
     );
 
     $statusCounts = [];
-    foreach (db()->all('SELECT status, COUNT(*) AS total FROM orders GROUP BY status') as $row) {
+    [$scope, $scopeParams] = admin_owner_scope('c');
+    foreach (db()->all(
+        'SELECT o.status, COUNT(*) AS total FROM orders o JOIN customers c ON c.id = o.customer_id
+         WHERE ' . $scope . ' GROUP BY o.status',
+        $scopeParams
+    ) as $row) {
         $statusCounts[$row['status']] = (int) $row['total'];
     }
 
@@ -690,6 +846,9 @@ function ctrl_admin_orders(): void
         'q' => $q,
         'pager' => $pager,
         'statusCounts' => $statusCounts,
+        'owners' => admin_is_sales() ? [] : admin_assignable_users(),
+        'ownerFilter' => $ownerFilter,
+        'isSales' => admin_is_sales(),
     ]);
 }
 
@@ -731,7 +890,7 @@ function ctrl_admin_order_status(array $params): void
 
     $id = admin_url_id($params);
     $status = (string) post('status', '');
-    $order = $id > 0 ? db()->one('SELECT * FROM orders WHERE id = ?', [$id]) : null;
+    $order = $id > 0 ? admin_find_order($id) : null;
 
     if (!$order) {
         flash('error', 'Order not found.');
@@ -789,7 +948,7 @@ function ctrl_admin_order_freight(array $params): void
     require_csrf();
 
     $id = admin_url_id($params);
-    $order = $id > 0 ? db()->one('SELECT * FROM orders WHERE id = ?', [$id]) : null;
+    $order = $id > 0 ? admin_find_order($id) : null;
     if (!$order) {
         flash('error', 'Order not found.');
         redirect('/admin/orders');
@@ -813,7 +972,7 @@ function ctrl_admin_order_tracking(array $params): void
     require_csrf();
 
     $id    = admin_url_id($params);
-    $order = $id > 0 ? db()->one('SELECT * FROM orders WHERE id = ?', [$id]) : null;
+    $order = $id > 0 ? admin_find_order($id) : null;
     if (!$order) {
         flash('error', 'Order not found.');
         redirect('/admin/orders');
@@ -890,24 +1049,31 @@ function ctrl_admin_customers(): void
     Auth::requireAdmin();
 
     $q = trim((string) input('q', ''));
+    $ownerFilter = admin_owner_filter();
     $page = max(1, (int) input('page', 1));
     $perPage = 20;
 
-    $where = '1';
-    $params = [];
+    [$scope, $params] = admin_owner_scope('c');
+    $where = $scope;
     if ($q !== '') {
         $like = '%' . $q . '%';
-        $where .= ' AND (company_name LIKE ? OR contact_name LIKE ? OR email LIKE ? OR customer_code LIKE ? OR gstin LIKE ?)';
-        array_push($params, $like, $like, $like, $like, $like);
+        $where .= ' AND (c.company_name LIKE ? OR c.contact_name LIKE ? OR c.email LIKE ? OR c.customer_code LIKE ? OR c.gstin LIKE ? OR au.name LIKE ?)';
+        array_push($params, $like, $like, $like, $like, $like, $like);
     }
-    $total = (int) db()->value('SELECT COUNT(*) FROM customers WHERE ' . $where, $params);
+    if ($ownerFilter !== null && !admin_is_sales()) {
+        $where .= ' AND c.sales_owner_id = ?';
+        $params[] = $ownerFilter;
+    }
+    $join = ' FROM customers c LEFT JOIN admin_users au ON au.id = c.sales_owner_id WHERE ';
+
+    $total = (int) db()->value('SELECT COUNT(*)' . $join . $where, $params);
     $pager = admin_pagination($total, $perPage, $page);
 
     $customers = db()->all(
-        'SELECT c.*,
+        'SELECT c.*, au.name AS sales_owner_name,
                 (SELECT COUNT(*) FROM orders o WHERE o.customer_id = c.id) AS order_count,
-                (SELECT COALESCE(SUM(o.grand_total_paise),0) FROM orders o WHERE o.customer_id = c.id AND o.status <> \'cancelled\') AS order_value
-         FROM customers c WHERE ' . $where . ' ORDER BY c.company_name LIMIT ' . $perPage . ' OFFSET ' . $pager['offset'],
+                (SELECT COALESCE(SUM(o.grand_total_paise),0) FROM orders o WHERE o.customer_id = c.id AND o.status <> \'cancelled\') AS order_value'
+        . $join . $where . ' ORDER BY c.company_name LIMIT ' . $perPage . ' OFFSET ' . $pager['offset'],
         $params
     );
 
@@ -918,6 +1084,9 @@ function ctrl_admin_customers(): void
         'customers' => $customers,
         'q' => $q,
         'pager' => $pager,
+        'owners' => admin_is_sales() ? [] : admin_assignable_users(),
+        'ownerFilter' => $ownerFilter,
+        'isSales' => admin_is_sales(),
     ]);
 }
 
@@ -925,7 +1094,7 @@ function ctrl_admin_customer(array $params): void
 {
     Auth::requireAdmin();
     $id = admin_url_id($params);
-    $customer = $id > 0 ? db()->one('SELECT * FROM customers WHERE id = ?', [$id]) : null;
+    $customer = $id > 0 ? admin_find_customer($id) : null;
     if (!$customer) {
         http_response_code(404);
         admin_render('not-found', [
@@ -946,6 +1115,8 @@ function ctrl_admin_customer(array $params): void
         'customer' => $customer,
         'orders' => $orders,
         'enquiries' => $enquiries,
+        'owners' => admin_is_sales() ? [] : admin_assignable_users((int) $customer['sales_owner_id']),
+        'isSales' => admin_is_sales(),
     ]);
 }
 
@@ -955,7 +1126,7 @@ function ctrl_admin_customer_save(array $params): void
     require_csrf();
 
     $id = admin_url_id($params);
-    $customer = $id > 0 ? db()->one('SELECT * FROM customers WHERE id = ?', [$id]) : null;
+    $customer = $id > 0 ? admin_find_customer($id) : null;
     if (!$customer) {
         flash('error', 'Customer not found.');
         redirect('/admin/customers');
@@ -967,7 +1138,7 @@ function ctrl_admin_customer_save(array $params): void
         redirect('/admin/customers/' . $id);
     }
 
-    db()->update('customers', [
+    $data = [
         'company_name' => $company,
         'contact_name' => trim((string) post('contact_name', '')),
         'email' => trim((string) post('email', '')),
@@ -984,7 +1155,22 @@ function ctrl_admin_customer_save(array $params): void
         'credit_limit_paise' => parse_money_to_paise(post('credit_limit', '0')),
         'is_active' => post('is_active') ? 1 : 0,
         'updated_at' => date('Y-m-d H:i:s'),
-    ], 'id = :id', ['id' => $id]);
+    ];
+
+    // Only full admins can reassign ownership; sales users keep their own link.
+    if (!admin_is_sales()) {
+        $ownerId = (int) post('sales_owner_id', 0);
+        if ($ownerId > 0) {
+            $validOwner = db()->one('SELECT id FROM admin_users WHERE id = ? AND is_active = 1', [$ownerId]);
+            if (!$validOwner) {
+                flash('error', 'Choose an active sales user as the owner.');
+                redirect('/admin/customers/' . $id);
+            }
+        }
+        $data['sales_owner_id'] = $ownerId > 0 ? $ownerId : null;
+    }
+
+    db()->update('customers', $data, 'id = :id', ['id' => $id]);
 
     flash('success', 'Customer account updated.');
     redirect('/admin/customers/' . $id);
@@ -994,12 +1180,17 @@ function ctrl_admin_customer_new(): void
 {
     Auth::requireAdmin();
     $stateList = ['Andhra Pradesh','Arunachal Pradesh','Assam','Bihar','Chhattisgarh','Goa','Gujarat','Haryana','Himachal Pradesh','Jharkhand','Karnataka','Kerala','Madhya Pradesh','Maharashtra','Manipur','Meghalaya','Mizoram','Nagaland','Odisha','Punjab','Rajasthan','Sikkim','Tamil Nadu','Telangana','Tripura','Uttar Pradesh','Uttarakhand','West Bengal','Andaman and Nicobar Islands','Chandigarh','Dadra and Nagar Haveli and Daman and Diu','Delhi','Jammu and Kashmir','Ladakh','Lakshadweep','Puducherry'];
+    $admin = Auth::admin();
     admin_render('customer-new', [
         'pageTitle' => 'Create customer account | Ronak Fire admin',
         'adminNav' => 'customers',
         'adminTitle' => 'Create customer',
         'states' => $stateList,
+        'owners' => admin_is_sales() ? [] : admin_assignable_users(),
+        'isSales' => admin_is_sales(),
+        'currentAdmin' => $admin,
         'customer' => [
+            'sales_owner_id' => (int) ($admin['id'] ?? 0),
             'company_name' => '',
             'contact_name' => '',
             'email' => '',
@@ -1062,6 +1253,8 @@ function ctrl_admin_customer_create(): void
         'pincode' => trim((string) post('pincode', '')),
         'price_tier' => trim((string) post('price_tier', 'standard')),
         'discount_bp' => max(0, min(10000, (int) round(((float) post('discount_percent', 0)) * 100))),
+        // Whoever creates the account becomes its sales owner.
+        'sales_owner_id' => (int) (Auth::admin()['id'] ?? 0),
         'credit_days' => max(0, (int) post('credit_days', 0)),
         'credit_limit_paise' => parse_money_to_paise(post('credit_limit', '0')),
         'is_active' => post('is_active') ? 1 : 0,
@@ -1107,29 +1300,43 @@ function ctrl_admin_enquiries(): void
 
     $status = trim((string) input('status', ''));
     $q = trim((string) input('q', ''));
+    $ownerFilter = admin_owner_filter();
     $page = max(1, (int) input('page', 1));
     $perPage = 20;
 
-    $where = '1';
-    $params = [];
+    [$scope, $params] = admin_owner_scope('c');
+    $where = $scope;
     if ($status !== '') {
-        $where .= ' AND status = ?';
+        $where .= ' AND e.status = ?';
         $params[] = $status;
+    }
+    if ($ownerFilter !== null && !admin_is_sales()) {
+        $where .= ' AND c.sales_owner_id = ?';
+        $params[] = $ownerFilter;
     }
     if ($q !== '') {
         $like = '%' . $q . '%';
-        $where .= ' AND (name LIKE ? OR company LIKE ? OR email LIKE ? OR product_name LIKE ?)';
-        array_push($params, $like, $like, $like, $like);
+        $where .= ' AND (e.name LIKE ? OR e.company LIKE ? OR e.email LIKE ? OR e.product_name LIKE ? OR au.name LIKE ?)';
+        array_push($params, $like, $like, $like, $like, $like);
     }
-    $total = (int) db()->value('SELECT COUNT(*) FROM enquiries WHERE ' . $where, $params);
+    $join = ' FROM enquiries e LEFT JOIN customers c ON c.id = e.customer_id
+              LEFT JOIN admin_users au ON au.id = c.sales_owner_id WHERE ';
+
+    $total = (int) db()->value('SELECT COUNT(*)' . $join . $where, $params);
     $pager = admin_pagination($total, $perPage, $page);
     $enquiries = db()->all(
-        'SELECT * FROM enquiries WHERE ' . $where . ' ORDER BY created_at DESC, id DESC LIMIT ' . $perPage . ' OFFSET ' . $pager['offset'],
+        'SELECT e.*, c.sales_owner_id, au.name AS sales_owner_name' . $join . $where
+        . ' ORDER BY e.created_at DESC, e.id DESC LIMIT ' . $perPage . ' OFFSET ' . $pager['offset'],
         $params
     );
 
     $statusCounts = [];
-    foreach (db()->all('SELECT status, COUNT(*) AS total FROM enquiries GROUP BY status') as $row) {
+    [$scope, $scopeParams] = admin_owner_scope('c');
+    foreach (db()->all(
+        'SELECT e.status, COUNT(*) AS total FROM enquiries e LEFT JOIN customers c ON c.id = e.customer_id
+         WHERE ' . $scope . ' GROUP BY e.status',
+        $scopeParams
+    ) as $row) {
         $statusCounts[$row['status']] = (int) $row['total'];
     }
 
@@ -1142,6 +1349,9 @@ function ctrl_admin_enquiries(): void
         'q' => $q,
         'pager' => $pager,
         'statusCounts' => $statusCounts,
+        'owners' => admin_is_sales() ? [] : admin_assignable_users(),
+        'ownerFilter' => $ownerFilter,
+        'isSales' => admin_is_sales(),
     ]);
 }
 
@@ -1149,7 +1359,7 @@ function ctrl_admin_enquiry(array $params): void
 {
     Auth::requireAdmin();
     $id = admin_url_id($params);
-    $enquiry = $id > 0 ? db()->one('SELECT * FROM enquiries WHERE id = ?', [$id]) : null;
+    $enquiry = $id > 0 ? admin_find_enquiry($id) : null;
     if (!$enquiry) {
         http_response_code(404);
         admin_render('not-found', [
@@ -1161,7 +1371,7 @@ function ctrl_admin_enquiry(array $params): void
     }
 
     $product = $enquiry['product_id'] ? Catalog::findById((int) $enquiry['product_id']) : null;
-    $customer = $enquiry['customer_id'] ? db()->one('SELECT * FROM customers WHERE id = ?', [$enquiry['customer_id']]) : null;
+    $customer = $enquiry['customer_id'] ? admin_find_customer((int) $enquiry['customer_id']) : null;
 
     admin_render('enquiry', [
         'pageTitle' => 'Quote request #' . $enquiry['id'] . ' | Ronak Fire admin',
@@ -1179,6 +1389,11 @@ function ctrl_admin_enquiry_status(array $params): void
     require_csrf();
 
     $id = admin_url_id($params);
+    $enquiry = $id > 0 ? admin_find_enquiry($id) : null;
+    if (!$enquiry) {
+        flash('error', 'Enquiry not found.');
+        redirect('/admin/enquiries');
+    }
     $status = (string) post('status', '');
     if (!in_array($status, ['new', 'contacted', 'quoted', 'closed'], true)) {
         flash('error', 'Choose a valid enquiry status.');
@@ -1203,7 +1418,7 @@ function ctrl_admin_enquiry_convert(array $params): void
     require_csrf();
 
     $id = admin_url_id($params);
-    $enquiry = db()->one('SELECT * FROM enquiries WHERE id = ?', [$id]);
+    $enquiry = admin_find_enquiry($id);
     if (!$enquiry) {
         flash('error', 'Enquiry not found.');
         redirect('/admin/enquiries');
@@ -1243,6 +1458,7 @@ function ctrl_admin_enquiry_convert(array $params): void
 function ctrl_admin_settings(): void
 {
     Auth::requireAdmin();
+    admin_require_manager();
 
     admin_render('settings', [
         'pageTitle' => 'Store settings | Ronak Fire admin',
@@ -1263,6 +1479,7 @@ function ctrl_admin_settings(): void
 function ctrl_admin_settings_save(): void
 {
     Auth::requireAdmin();
+    admin_require_manager();
     require_csrf();
 
     set_setting('min_order_paise', (string) max(0, parse_money_to_paise(post('min_order', '0'))));
@@ -1316,4 +1533,163 @@ function ctrl_admin_password(): void
 
     flash('success', 'Your password has been changed.');
     redirect('/admin/account');
+}
+
+/* -------------------------------------------------------------------------
+   Sales team & ownership report
+   ------------------------------------------------------------------------- */
+
+function ctrl_admin_team(): void
+{
+    Auth::requireAdmin();
+    admin_require_manager();
+
+    $users = db()->all(
+        'SELECT u.*,
+                (SELECT COUNT(*) FROM customers c WHERE c.sales_owner_id = u.id) AS customer_count,
+                (SELECT COUNT(*) FROM customers c WHERE c.sales_owner_id = u.id AND c.is_active = 1) AS active_customer_count
+         FROM admin_users u ORDER BY CASE WHEN u.role = \'sales\' THEN 0 ELSE 1 END, u.name'
+    );
+
+    admin_render('team', [
+        'pageTitle' => 'Sales team | Ronak Fire admin',
+        'adminNav' => 'team',
+        'adminTitle' => 'Sales team',
+        'users' => $users,
+    ]);
+}
+
+function ctrl_admin_team_new(): void
+{
+    Auth::requireAdmin();
+    admin_require_manager();
+
+    admin_render('team-new', [
+        'pageTitle' => 'Add sales user | Ronak Fire admin',
+        'adminNav' => 'team',
+        'adminTitle' => 'Add sales user',
+    ]);
+}
+
+function ctrl_admin_team_create(): void
+{
+    Auth::requireAdmin();
+    admin_require_manager();
+    require_csrf();
+
+    $name = trim((string) post('name', ''));
+    $email = strtolower(trim((string) post('email', '')));
+    $role = (string) post('role', 'sales');
+    $password = (string) post('password', '');
+    $confirm = (string) post('confirm_password', '');
+
+    if ($name === '') {
+        flash('error', 'Name is required.');
+        redirect('/admin/team/new');
+    }
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        flash('error', 'Enter a valid email address.');
+        redirect('/admin/team/new');
+    }
+    if (!in_array($role, ['admin', 'sales'], true)) {
+        flash('error', 'Choose a valid role.');
+        redirect('/admin/team/new');
+    }
+    if (strlen($password) < 10) {
+        flash('error', 'Password must be at least 10 characters.');
+        redirect('/admin/team/new');
+    }
+    if ($password !== $confirm) {
+        flash('error', 'The passwords do not match.');
+        redirect('/admin/team/new');
+    }
+    $existing = db()->one('SELECT id FROM admin_users WHERE email = ?', [$email]);
+    if ($existing) {
+        flash('error', 'A user with that email already exists.');
+        redirect('/admin/team/new');
+    }
+
+    db()->insert('admin_users', [
+        'name' => $name,
+        'email' => $email,
+        'password_hash' => password_hash($password, PASSWORD_DEFAULT),
+        'role' => $role,
+        'is_active' => 1,
+        'created_at' => date('Y-m-d H:i:s'),
+    ]);
+
+    flash('success', 'Sales user created. They can now sign in at /admin/login.');
+    redirect('/admin/team');
+}
+
+function ctrl_admin_team_role(array $params): void
+{
+    Auth::requireAdmin();
+    admin_require_manager();
+    require_csrf();
+
+    $id = admin_url_id($params);
+    $user = $id > 0 ? db()->one('SELECT * FROM admin_users WHERE id = ?', [$id]) : null;
+    if (!$user) {
+        flash('error', 'User not found.');
+        redirect('/admin/team');
+    }
+    $role = (string) post('role', '');
+    if (!in_array($role, ['admin', 'sales'], true)) {
+        flash('error', 'Choose a valid role.');
+        redirect('/admin/team');
+    }
+    db()->update('admin_users', ['role' => $role], 'id = :id', ['id' => $id]);
+    flash('success', 'Role updated.');
+    redirect('/admin/team');
+}
+
+function ctrl_admin_team_toggle(array $params): void
+{
+    Auth::requireAdmin();
+    admin_require_manager();
+    require_csrf();
+
+    $id = admin_url_id($params);
+    $user = $id > 0 ? db()->one('SELECT * FROM admin_users WHERE id = ?', [$id]) : null;
+    if (!$user) {
+        flash('error', 'User not found.');
+        redirect('/admin/team');
+    }
+    if ($id === (int) (Auth::admin()['id'] ?? 0)) {
+        flash('error', 'You cannot deactivate your own account.');
+        redirect('/admin/team');
+    }
+    $newState = (int) $user['is_active'] === 1 ? 0 : 1;
+    db()->update('admin_users', ['is_active' => $newState], 'id = :id', ['id' => $id]);
+    flash('success', $newState === 1 ? 'User activated.' : 'User deactivated.');
+    redirect('/admin/team');
+}
+
+function ctrl_admin_sales_report(): void
+{
+    Auth::requireAdmin();
+    admin_require_manager();
+
+    $summary = db()->all(
+        "SELECT au.id, au.name, au.email, au.role,
+                (SELECT COUNT(*) FROM customers c WHERE c.sales_owner_id = au.id) AS customer_count,
+                (SELECT COUNT(*) FROM customers c WHERE c.sales_owner_id = au.id AND c.is_active = 1) AS active_customer_count,
+                (SELECT COUNT(*) FROM orders o JOIN customers c ON c.id = o.customer_id WHERE c.sales_owner_id = au.id) AS order_count,
+                (SELECT COALESCE(SUM(o.grand_total_paise),0) FROM orders o JOIN customers c ON c.id = o.customer_id
+                 WHERE c.sales_owner_id = au.id AND o.status <> 'cancelled') AS order_value,
+                (SELECT COUNT(*) FROM enquiries e JOIN customers c ON c.id = e.customer_id WHERE c.sales_owner_id = au.id) AS enquiry_count
+         FROM admin_users au
+         WHERE au.is_active = 1 AND au.role IN ('admin', 'sales')
+         ORDER BY order_value DESC, customer_count DESC, au.name"
+    );
+    $unassigned = (int) db()->value('SELECT COUNT(*) FROM customers WHERE sales_owner_id IS NULL');
+
+    admin_render('sales-report', [
+        'pageTitle' => 'Sales ownership report | Ronak Fire admin',
+        'adminNav' => 'sales-report',
+        'adminTitle' => 'Sales ownership report',
+        'summary' => $summary,
+        'unassigned' => $unassigned,
+    ]);
 }

@@ -107,13 +107,15 @@ CREATE TABLE IF NOT EXISTS customers (
     password_set_at DATETIME NULL,
     price_tier VARCHAR(64) NOT NULL DEFAULT 'standard',
     discount_bp INT NOT NULL DEFAULT 0,
+    sales_owner_id INT NULL,
     credit_days INT NOT NULL DEFAULT 0,
     credit_limit_paise INT NOT NULL DEFAULT 0,
     is_active TINYINT(1) NOT NULL DEFAULT 1,
     last_login_at DATETIME NULL,
     created_at DATETIME NOT NULL,
     updated_at DATETIME NOT NULL,
-    portal_synced_at DATETIME NULL
+    portal_synced_at DATETIME NULL,
+    KEY idx_customers_sales_owner (sales_owner_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS carts (

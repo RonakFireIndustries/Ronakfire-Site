@@ -84,6 +84,7 @@
                     <?php if (!empty($enquiry['gstin'])): ?><p><span class="admin-tag">GSTIN <?= e($enquiry['gstin']) ?></span></p><?php endif; ?>
                 </div>
                 <?php if ($customer): ?>
+                    <p class="admin-hint-text">Sales owner: <?= e($customer['sales_owner_name'] ?: 'Unassigned') ?></p>
                     <a class="admin-btn admin-btn--block" href="/admin/customers/<?= (int) $customer['id'] ?>"><?= icon('users') ?> Open customer account</a>
                 <?php else: ?>
                     <p class="admin-hint-text"><?= icon('alert') ?> This enquiry was sent by a visitor who was not signed in.</p>

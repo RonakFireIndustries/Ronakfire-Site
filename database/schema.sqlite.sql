@@ -105,6 +105,7 @@ CREATE TABLE IF NOT EXISTS customers (
     pincode TEXT,
     price_tier TEXT NOT NULL DEFAULT 'standard',
     discount_bp INTEGER NOT NULL DEFAULT 0,
+    sales_owner_id INTEGER,
     credit_days INTEGER NOT NULL DEFAULT 0,
     credit_limit_paise INTEGER NOT NULL DEFAULT 0,
     is_active INTEGER NOT NULL DEFAULT 1,
@@ -238,6 +239,7 @@ CREATE INDEX IF NOT EXISTS idx_products_category ON products (category_id, is_ac
 CREATE INDEX IF NOT EXISTS idx_option_groups_product ON option_groups (product_id);
 CREATE INDEX IF NOT EXISTS idx_option_values_group ON option_values (group_id);
 CREATE INDEX IF NOT EXISTS idx_orders_customer ON orders (customer_id, placed_at);
+CREATE INDEX IF NOT EXISTS idx_customers_sales_owner ON customers (sales_owner_id);
 CREATE INDEX IF NOT EXISTS idx_orders_status ON orders (status);
 CREATE INDEX IF NOT EXISTS idx_enquiries_status ON enquiries (status, created_at);
 

@@ -153,4 +153,14 @@ final class Auth
             redirect('/admin/login');
         }
     }
+
+    /**
+     * Sales users are admin_users with the 'sales' role. They can work with
+     * the customers assigned to them, but not manage the catalog or staff.
+     */
+    public static function isSales(): bool
+    {
+        $admin = self::admin();
+        return $admin !== null && ($admin['role'] ?? '') === 'sales';
+    }
 }

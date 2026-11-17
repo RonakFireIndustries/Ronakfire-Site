@@ -109,6 +109,14 @@ $router->get('admin/enquiries/{id}', 'ctrl_admin_enquiry');
 $router->post('admin/enquiries/{id}/status', 'ctrl_admin_enquiry_status');
 $router->post('admin/enquiries/{id}/convert', 'ctrl_admin_enquiry_convert');
 
+$router->get('admin/team', 'ctrl_admin_team');
+$router->get('admin/team/new', 'ctrl_admin_team_new');
+$router->post('admin/team/create', 'ctrl_admin_team_create');
+$router->post('admin/team/{id}/role', 'ctrl_admin_team_role');
+$router->post('admin/team/{id}/toggle', 'ctrl_admin_team_toggle');
+
+$router->get('admin/sales-report', 'ctrl_admin_sales_report');
+
 $router->get('admin/settings', 'ctrl_admin_settings');
 $router->post('admin/settings', 'ctrl_admin_settings_save');
 $router->get('admin/account', 'ctrl_admin_account');

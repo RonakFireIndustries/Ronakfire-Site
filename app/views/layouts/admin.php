@@ -42,6 +42,10 @@ $adminInitial = strtoupper(substr((string) ($admin['name'] ?? 'A'), 0, 1));
             <a href="/admin/orders" class="<?= $adminNav === 'orders' ? 'is-active' : '' ?>"><?= icon('cart') ?><span>Orders</span><?php if ($newOrders): ?><em class="admin-nav__badge"><?= $newOrders ?></em><?php endif; ?></a>
             <a href="/admin/enquiries" class="<?= $adminNav === 'enquiries' ? 'is-active' : '' ?>"><?= icon('clipboard') ?><span>Quote requests</span><?php if ($newEnquiries): ?><em class="admin-nav__badge"><?= $newEnquiries ?></em><?php endif; ?></a>
             <a href="/admin/customers" class="<?= $adminNav === 'customers' ? 'is-active' : '' ?>"><?= icon('users') ?><span>Customers</span></a>
+            <?php if (!\App\Auth::isSales()): ?>
+                <a href="/admin/team" class="<?= $adminNav === 'team' ? 'is-active' : '' ?>"><?= icon('users') ?><span>Sales team</span></a>
+                <a href="/admin/sales-report" class="<?= $adminNav === 'sales-report' ? 'is-active' : '' ?>"><?= icon('chart') ?><span>Ownership report</span></a>
+            <?php endif; ?>
 
             <p class="admin-nav__label">System</p>
             <a href="/admin/settings" class="<?= $adminNav === 'settings' ? 'is-active' : '' ?>"><?= icon('settings') ?><span>Store settings</span></a>

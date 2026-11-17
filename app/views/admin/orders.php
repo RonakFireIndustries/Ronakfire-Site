@@ -53,7 +53,7 @@ $statusUrl = static function (string $value) use ($q): string {
         <div class="admin-table-wrap">
             <table class="admin-table admin-table--orders">
                 <thead>
-                <tr><th>Order</th><th>Customer</th><th>Placed</th><th>Lines</th><th>Status</th><th class="is-right">Total</th><th></th></tr>
+                <tr><th>Order</th><th>Customer</th><th>Sales owner</th><th>Placed</th><th>Lines</th><th>Status</th><th class="is-right">Total</th><th></th></tr>
                 </thead>
                 <tbody>
                 <?php foreach ($orders as $order): ?>
@@ -66,6 +66,7 @@ $statusUrl = static function (string $value) use ($q): string {
                             <a class="admin-table__link admin-table__link--plain" href="/admin/customers/<?= (int) $order['customer_id'] ?>"><?= e($order['company_name']) ?></a>
                             <small><?= e($order['customer_code'] ?: '—') ?></small>
                         </td>
+                        <td><?= e($order['sales_owner_name'] ?: '—') ?></td>
                         <td><?= e(format_date($order['placed_at'])) ?><small><?= e(format_date($order['placed_at'], 'H:i')) ?></small></td>
                         <td><?= (int) db()->value('SELECT COUNT(*) FROM order_items WHERE order_id = ?', [$order['id']]) ?></td>
                         <td><span class="admin-status admin-status--<?= e($order['status']) ?>"><?= e(order_status_label($order['status'])) ?></span></td>

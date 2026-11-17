@@ -47,7 +47,7 @@ $statusUrl = static function (string $value) use ($q): string {
     <?php if ($enquiries): ?>
         <div class="admin-table-wrap">
             <table class="admin-table admin-table--enquiries">
-                <thead><tr><th>Requirement</th><th>Contact</th><th>Received</th><th class="is-right">Qty</th><th>Status</th><th></th></tr></thead>
+                <thead><tr><th>Requirement</th><th>Contact</th><th>Sales owner</th><th>Received</th><th class="is-right">Qty</th><th>Status</th><th></th></tr></thead>
                 <tbody>
                 <?php foreach ($enquiries as $enquiry): ?>
                     <tr>
@@ -59,6 +59,7 @@ $statusUrl = static function (string $value) use ($q): string {
                             <?= e($enquiry['name']) ?>
                             <small><?= e($enquiry['email']) ?><?= $enquiry['phone'] ? ' · ' . e($enquiry['phone']) : '' ?></small>
                         </td>
+                        <td><?= e($enquiry['sales_owner_name'] ?: '—') ?></td>
                         <td><?= e(format_date($enquiry['created_at'])) ?><small><?= e(format_date($enquiry['created_at'], 'H:i')) ?></small></td>
                         <td class="is-right"><?= (int) $enquiry['qty'] ?></td>
                         <td><span class="admin-status admin-status--<?= e($enquiry['status']) ?>"><?= e(ucfirst($enquiry['status'])) ?></span></td>

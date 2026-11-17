@@ -20,8 +20,19 @@
         <?= icon('search') ?>
         <input type="search" name="q" value="<?= e($q) ?>" placeholder="Company, contact, email, code or GSTIN…">
     </label>
+    <?php if (!empty($owners)): ?>
+        <label class="admin-field admin-field--inline">
+            <span>Sales owner</span>
+            <select name="owner">
+                <option value="">All owners</option>
+                <?php foreach ($owners as $owner): ?>
+                    <option value="<?= (int) $owner['id'] ?>" <?= (int) ($ownerFilter ?? 0) === (int) $owner['id'] ? 'selected' : '' ?>><?= e($owner['name']) ?></option>
+                <?php endforeach; ?>
+            </select>
+        </label>
+    <?php endif; ?>
     <button class="admin-btn" type="submit">Search</button>
-    <?php if ($q !== ''): ?><a class="admin-btn admin-btn--ghost" href="/admin/customers">Clear</a><?php endif; ?>
+    <?php if ($q !== '' || !empty($ownerFilter) || isset($_GET['owner'])): ?><a class="admin-btn admin-btn--ghost" href="/admin/customers">Clear</a><?php endif; ?>
 </form>
 
 <section class="admin-panel">
@@ -29,7 +40,7 @@
         <div class="admin-table-wrap">
             <table class="admin-table admin-table--customers">
                 <thead>
-                <tr><th>Company</th><th>Contact</th><th>Tier</th><th class="is-right">Discount</th><th class="is-right">Orders</th><th class="is-right">Value</th><th>Status</th><th></th></tr>
+                <tr><th>Company</th><th>Contact</th><th>Sales owner</th><th>Tier</th><th class="is-right">Discount</th><th class="is-right">Orders</th><th class="is-right">Value</th><th>Status</th><th></th></tr>
                 </thead>
                 <tbody>
                 <?php foreach ($customers as $customer): ?>
@@ -42,6 +53,7 @@
                             <?= e($customer['contact_name'] ?: '—') ?>
                             <small><?= e($customer['email'] ?: '') ?><?= $customer['phone'] ? ' · ' . e($customer['phone']) : '' ?></small>
                         </td>
+                        <td><?= e($customer['sales_owner_name'] ?: '—') ?></td>
                         <td><span class="admin-tag"><?= e(ucfirst((string) ($customer['price_tier'] ?: 'standard'))) ?></span></td>
                         <td class="is-right"><?= (int) $customer['discount_bp'] > 0 ? rtrim(rtrim(number_format($customer['discount_bp'] / 100, 2, '.', ''), '0'), '.') . '%' : '—' ?></td>
                         <td class="is-right"><?= (int) $customer['order_count'] ?></td>

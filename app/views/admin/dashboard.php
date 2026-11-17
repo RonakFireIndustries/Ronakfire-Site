@@ -116,6 +116,33 @@ $statusTotal = array_sum($statusCounts);
         <?php endif; ?>
     </section>
 
+<?php if (!empty($salesSummary)): ?>
+<div class="admin-grid admin-grid--two" style="margin-top:1.5rem;">
+    <section class="admin-panel">
+        <div class="admin-panel__head">
+            <div><h2>Sales ownership</h2><p>Customers and order value grouped by owner.</p></div>
+            <a class="admin-link" href="/admin/sales-report">Full report <?= icon('arrow-right') ?></a>
+        </div>
+        <div class="admin-table-wrap">
+            <table class="admin-table">
+                <thead><tr><th>Owner</th><th class="is-right">Customers</th><th class="is-right">Orders</th><th class="is-right">Value</th></tr></thead>
+                <tbody>
+                <?php foreach (array_slice($salesSummary, 0, 6) as $row): ?>
+                    <tr>
+                        <td><?= e($row['name']) ?><small><?= e(ucfirst((string) $row['role'])) ?></small></td>
+                        <td class="is-right"><?= (int) $row['customer_count'] ?></td>
+                        <td class="is-right"><?= (int) $row['order_count'] ?></td>
+                        <td class="is-right"><?= money((int) $row['order_value']) ?></td>
+                    </tr>
+                <?php endforeach; ?>
+                </tbody>
+                <tfoot><tr><td colspan="2">Unassigned customers</td><td class="is-right" colspan="2"><?= (int) $unassignedCustomers ?></td></tr></tfoot>
+            </table>
+        </div>
+    </section>
+</div>
+<?php endif; ?>
+
     <section class="admin-panel">
         <div class="admin-panel__head">
             <div><h2>Best-selling lines</h2><p>By quantity across non-cancelled orders.</p></div>

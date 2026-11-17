@@ -122,6 +122,19 @@ foreach ($orders as $row) {
                     <label class="admin-field"><span>Credit days</span><input type="number" name="credit_days" value="<?= (int) $customer['credit_days'] ?>" min="0"></label>
                     <label class="admin-field"><span>Credit limit (₹)</span><input type="text" name="credit_limit" value="<?= e(admin_money_input((int) $customer['credit_limit_paise'])) ?>" inputmode="decimal"></label>
                 </div>
+                <?php if (!empty($owners)): ?>
+                    <label class="admin-field">
+                        <span>Sales owner</span>
+                        <select name="sales_owner_id">
+                            <option value="0">Unassigned</option>
+                            <?php foreach ($owners as $owner): ?>
+                                <option value="<?= (int) $owner['id'] ?>" <?= (int) ($customer['sales_owner_id'] ?? 0) === (int) $owner['id'] ? 'selected' : '' ?>><?= e($owner['name']) ?> (<?= e(ucfirst((string) $owner['role'])) ?>)</option>
+                            <?php endforeach; ?>
+                        </select>
+                    </label>
+                <?php elseif (!empty($customer['sales_owner_name'])): ?>
+                    <div class="admin-field"><span>Sales owner</span><input type="text" value="<?= e($customer['sales_owner_name']) ?>" readonly></div>
+                <?php endif; ?>
                 <label class="admin-toggle">
                     <input type="checkbox" name="is_active" value="1" <?= (int) $customer['is_active'] === 1 ? 'checked' : '' ?>>
                     <span><strong>Account active</strong><small>Blocked accounts cannot sign in or order.</small></span>
@@ -137,6 +150,7 @@ foreach ($orders as $row) {
                     <div><dt>Portal ID</dt><dd><code><?= e($customer['portal_id']) ?></code></dd></div>
                     <div><dt>Created</dt><dd><?= e(format_datetime($customer['created_at'])) ?></dd></div>
                     <div><dt>Last login</dt><dd><?= e(format_datetime($customer['last_login_at'])) ?></dd></div>
+                    <div><dt>Sales owner</dt><dd><?= e($customer['sales_owner_name'] ?: 'Unassigned') ?></dd></div>
                     <div><dt>Last synced</dt><dd><?= e(format_datetime($customer['portal_synced_at'] ?? null)) ?></dd></div>
                     <div><dt>Updated</dt><dd><?= e(format_datetime($customer['updated_at'])) ?></dd></div>
                 </dl>

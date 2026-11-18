@@ -227,7 +227,7 @@ $phoneHref = setting('support_phone_href', config('store.support_phone_href'));
     </div>
 </section>
 
-<section class="section section--tight client-band">
+<!-- <section class="section section--tight client-band">
     <div class="container">
         <div class="section-head">
             <div>
@@ -250,7 +250,7 @@ $phoneHref = setting('support_phone_href', config('store.support_phone_href'));
             <span><?= icon('truck') ?> Pan-India project dispatch</span>
         </div>
     </div>
-</section>
+</section> -->
 
 <section class="section">
     <div class="container quote-cta">

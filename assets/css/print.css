@@ -147,7 +147,7 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
     text-transform: uppercase;
     color: var(--muted);
 }
-.invoice__parties strong { display: block; font-size: 10.5px; color: var(--ink); }
+.invoice__parties-table > tbody > tr > td > strong { display: block; font-size: 10.5px; color: var(--ink); }
 .invoice__parties p { margin: 0 0 2px; font-size: 9.5px; line-height: 1.5; color: var(--text); }
 
 /* Document facts in two label/value columns (table renders reliably in PDF). */
@@ -208,12 +208,24 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 .invoice__items thead th.num { text-align: right; }
 
 .invoice__totals {
-    display: grid;
-    grid-template-columns: 1.4fr 1fr;
-    gap: 18px;
-    margin-top: 14px;
-    padding-top: 12px;
+    margin-top: 10px;
+    padding-top: 8px;
     border-top: 1px solid var(--line);
+}
+/* Two-column totals rendered as a table so it also works inside the PDF. */
+.invoice__totals-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+}
+.invoice__totals-table > tbody > tr > td {
+    width: 58%;
+    padding: 0 14px 0 0;
+    vertical-align: top;
+}
+.invoice__totals-table > tbody > tr > td:last-child {
+    width: 42%;
+    padding: 0 0 0 14px;
 }
 .invoice__tax h2 { margin-bottom: 5px; font-family: var(--font-body); font-size: 8.5px; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); }
 .invoice__tax table th,
@@ -297,11 +309,15 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
         box-shadow: none;
     }
     .invoice__header { break-after: avoid; }
+    .invoice__items thead { display: table-header-group; }
     .invoice__items tr,
-    .invoice__terms li { break-inside: avoid; }
-    .invoice__totals { break-inside: avoid; }
-    .invoice__sign { break-inside: avoid; }
-    .invoice__footer { break-inside: avoid; }
+    .invoice__terms li { break-inside: avoid; page-break-inside: avoid; }
+    .invoice__parties,
+    .invoice__meta,
+    .invoice__totals,
+    .invoice__terms,
+    .invoice__sign,
+    .invoice__footer { break-inside: avoid; page-break-inside: avoid; }
     a { color: inherit; text-decoration: none; }
     * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
@@ -321,7 +337,15 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
     }
     .invoice__meta th { width: 24%; }
     .invoice__meta td { width: 26%; }
-    .invoice__totals { grid-template-columns: minmax(0, 1fr); }
+    .invoice__totals-table,
+    .invoice__totals-table tbody,
+    .invoice__totals-table tr,
+    .invoice__totals-table td { display: block; width: 100%; }
+    .invoice__totals-table > tbody > tr > td,
+    .invoice__totals-table > tbody > tr > td:last-child {
+        width: 100%;
+        padding: 0 0 10px;
+    }
     .invoice__items { min-width: 620px; }
     .invoice__footer { flex-direction: column; gap: 2px; }
 }

@@ -22,6 +22,8 @@ node_modules/
 
 # Dependencies (vendor/ is intentionally committed for shared-host deployment)
 composer.phar
+# dompdf-generated font metrics cache (recreated automatically at runtime)
+vendor/dompdf/dompdf/lib/fonts/*.ufm.json
 
 # Local application configuration and secrets
 config.local.php

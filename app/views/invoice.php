@@ -116,16 +116,20 @@ $metaRows = array_chunk($metaPairs, 2);
                 <td><?= $index + 1 ?></td>
                 <td>
                     <strong><?= e($item['product_name']) ?></strong>
-                    <small><?= e($item['sku']) ?></small>
-                    <?php if (!empty($itemOptions['summary'])): ?>
-                        <em><?= e(implode(' · ', $itemOptions['summary'])) ?></em>
-                    <?php endif; ?>
+                    <?php
+                    $itemDetail = trim((string) $item['sku']);
+                    if (!empty($itemOptions['summary'])) {
+                        $optionText = implode(' · ', $itemOptions['summary']);
+                        $itemDetail = trim($itemDetail . ($itemDetail !== '' ? ' · ' : '') . $optionText);
+                    }
+                    ?>
+                    <?php if ($itemDetail !== ''): ?><small><?= e($itemDetail) ?></small><?php endif; ?>
                 </td>
                 <td><?= e(db()->value('SELECT hsn_code FROM products WHERE id = ?', [$item['product_id']]) ?: '—') ?></td>
                 <td class="num"><?= (int) $item['qty'] ?></td>
                 <td class="num"><?= money((int) $item['unit_price_paise']) ?></td>
                 <td class="num"><?= money((int) $item['line_subtotal_paise']) ?></td>
-                <td class="num"><?= gst_label((int) $item['gst_rate_bp']) ?><br><?= money((int) $item['line_gst_paise']) ?></td>
+                <td class="num"><?= gst_label((int) $item['gst_rate_bp']) ?> <?= money((int) $item['line_gst_paise']) ?></td>
                 <td class="num"><?= money((int) $item['line_total_paise']) ?></td>
             </tr>
         <?php endforeach; ?>
@@ -133,32 +137,40 @@ $metaRows = array_chunk($metaPairs, 2);
     </table>
 
     <section class="invoice__totals">
-        <div class="invoice__tax">
-            <h2>Tax summary</h2>
-            <table>
-                <thead><tr><th>Rate</th><th class="num">Taxable</th><th class="num"><?= $isIntraState ? 'CGST' : 'IGST' ?></th><?php if ($isIntraState): ?><th class="num">SGST</th><?php endif; ?><th class="num">Tax</th></tr></thead>
-                <tbody>
-                <?php foreach ($taxGroups as $rate => $group): ?>
-                    <?php $half = (int) round($group['tax'] / 2); ?>
-                    <tr>
-                        <td><?= gst_label($rate) ?></td>
-                        <td class="num"><?= money($group['taxable']) ?></td>
-                        <td class="num"><?= money($isIntraState ? $half : $group['tax']) ?></td>
-                        <?php if ($isIntraState): ?><td class="num"><?= money($group['tax'] - $half) ?></td><?php endif; ?>
-                        <td class="num"><?= money($group['tax']) ?></td>
-                    </tr>
-                <?php endforeach; ?>
-                </tbody>
-            </table>
-            <p><?= $isIntraState ? 'Intra-state supply: CGST and SGST applied.' : 'Inter-state supply: IGST applied.' ?></p>
-        </div>
-        <dl class="invoice__sum">
-            <div><dt>Subtotal</dt><dd><?= money((int) $order['subtotal_paise']) ?></dd></div>
-            <div><dt>GST</dt><dd><?= money((int) $order['gst_paise']) ?></dd></div>
-            <div><dt>Freight</dt><dd><?= (int) $order['freight_paise'] > 0 ? money((int) $order['freight_paise']) : 'To be confirmed' ?></dd></div>
-            <?php if ((int) ($order['discount_paise'] ?? 0) > 0): ?><div><dt>Discount</dt><dd>&minus; <?= money((int) $order['discount_paise']) ?></dd></div><?php endif; ?>
-            <div class="is-total"><dt>Grand total</dt><dd><?= money((int) $order['grand_total_paise']) ?></dd></div>
-        </dl>
+        <table class="invoice__totals-table">
+            <tbody>
+            <tr>
+                <td class="invoice__tax">
+                    <h2>Tax summary</h2>
+                    <table>
+                        <thead><tr><th>Rate</th><th class="num">Taxable</th><th class="num"><?= $isIntraState ? 'CGST' : 'IGST' ?></th><?php if ($isIntraState): ?><th class="num">SGST</th><?php endif; ?><th class="num">Tax</th></tr></thead>
+                        <tbody>
+                        <?php foreach ($taxGroups as $rate => $group): ?>
+                            <?php $half = (int) round($group['tax'] / 2); ?>
+                            <tr>
+                                <td><?= gst_label($rate) ?></td>
+                                <td class="num"><?= money($group['taxable']) ?></td>
+                                <td class="num"><?= money($isIntraState ? $half : $group['tax']) ?></td>
+                                <?php if ($isIntraState): ?><td class="num"><?= money($group['tax'] - $half) ?></td><?php endif; ?>
+                                <td class="num"><?= money($group['tax']) ?></td>
+                            </tr>
+                        <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                    <p><?= $isIntraState ? 'Intra-state supply: CGST and SGST applied.' : 'Inter-state supply: IGST applied.' ?></p>
+                </td>
+                <td class="invoice__sum-cell">
+                    <dl class="invoice__sum">
+                        <div><dt>Subtotal</dt><dd><?= money((int) $order['subtotal_paise']) ?></dd></div>
+                        <div><dt>GST</dt><dd><?= money((int) $order['gst_paise']) ?></dd></div>
+                        <div><dt>Freight</dt><dd><?= (int) $order['freight_paise'] > 0 ? money((int) $order['freight_paise']) : 'To be confirmed' ?></dd></div>
+                        <?php if ((int) ($order['discount_paise'] ?? 0) > 0): ?><div><dt>Discount</dt><dd>&minus; <?= money((int) $order['discount_paise']) ?></dd></div><?php endif; ?>
+                        <div class="is-total"><dt>Grand total</dt><dd><?= money((int) $order['grand_total_paise']) ?></dd></div>
+                    </dl>
+                </td>
+            </tr>
+            </tbody>
+        </table>
     </section>
 
     <section class="invoice__terms">

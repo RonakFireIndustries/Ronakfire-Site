@@ -1,5 +1,6 @@
 <?php
 /** @var array $customer */
+/** @var array $proformas */
 ?>
 <section class="page-hero page-hero--compact">
     <div class="container">
@@ -23,12 +24,32 @@
             <div class="panel">
                 <header class="panel__header">
                     <div>
-                        <h2>Documents</h2>
-                        <p>No documents shared yet.</p>
+                        <h2>Proforma invoices</h2>
+                        <p><?= count($proformas) ?> <?= count($proformas) === 1 ? 'document' : 'documents' ?></p>
                     </div>
                 </header>
                 <div class="panel__body">
-                    <p class="muted">Invoices, proforma invoices and supporting documents will appear here when shared.</p>
+                    <?php if ($proformas): ?>
+                        <div class="document-list">
+                            <?php foreach ($proformas as $proforma): ?>
+                                <article class="document-item">
+                                    <div>
+                                        <h3><?= e($proforma['proforma_no']) ?></h3>
+                                        <p>Order <?= e($proforma['order_no'] ?: '—') ?> · <?= e(format_date($proforma['created_at'])) ?></p>
+                                        <?php if (!empty($proforma['valid_until'])): ?>
+                                            <p>Valid until <?= e(format_date((string) $proforma['valid_until'], 'd M Y')) ?></p>
+                                        <?php endif; ?>
+                                    </div>
+                                    <div class="document-item__actions">
+                                        <strong><?= money((int) $proforma['grand_total_paise']) ?></strong>
+                                        <a class="btn btn--outline btn--sm" href="/account/proformas/<?= (int) $proforma['id'] ?>/pdf" target="_blank" rel="noopener"><?= icon('download') ?> Download PDF</a>
+                                    </div>
+                                </article>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php else: ?>
+                        <p class="muted">Invoices, proforma invoices and supporting documents will appear here when shared.</p>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>

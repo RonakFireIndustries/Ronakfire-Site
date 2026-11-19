@@ -7,6 +7,7 @@ use App\Cart;
 use App\Catalog;
 use App\PortalAuth;
 use App\Pricing;
+use App\Proforma;
 
 /* -------------------------------------------------------------------------
    Storefront
@@ -502,17 +503,13 @@ function ctrl_checkout(): void
             ] : $shipForm;
 
             $now = date('Y-m-d H:i:s');
-            $orderNo = null;
-            for ($i = 0; $i < 8; $i++) {
-                $candidate = 'RF-' . date('Ymd') . '-' . random_int(100000, 999999);
-                if (!db()->one('SELECT id FROM orders WHERE order_no = ?', [$candidate])) {
-                    $orderNo = $candidate;
-                    break;
-                }
-            }
-            if ($orderNo === null) {
+            try {
+                $orderNo = generate_order_no();
+            } catch (Throwable $e) {
+                $orderNo = null;
                 $errors['general'] = 'Could not allocate an order number. Please try again.';
-            } else {
+            }
+            if ($orderNo !== null) {
                 try {
                     $orderId = db()->transaction(function () use ($orderNo, $customer, $form, $shipping, $totals, $items, $now): int {
                         $orderId = db()->insert('orders', [
@@ -1422,10 +1419,35 @@ function ctrl_account_documents(): void
 {
     require_customer();
     $customer = current_customer();
+    $proformas = db()->all(
+        'SELECT p.*, o.order_no
+         FROM proformas p LEFT JOIN orders o ON o.id = p.order_id
+         WHERE p.customer_id = ?
+         ORDER BY p.created_at DESC, p.id DESC',
+        [(int) $customer['id']]
+    );
     render('account/documents', [
         'pageTitle' => 'Documents | Ronak Fire Store',
         'bodyClass' => 'page-account',
         'customer' => $customer,
+        'proformas' => $proformas,
         'activeNav' => '/account',
     ]);
+}
+
+function ctrl_account_proforma_pdf(array $params): void
+{
+    require_customer();
+    $customer = current_customer();
+    $id = (int) ($params['id'] ?? 0);
+    $proforma = $id > 0 ? db()->one(
+        'SELECT * FROM proformas WHERE id = ? AND customer_id = ?',
+        [$id, (int) $customer['id']]
+    ) : null;
+    if (!$proforma) {
+        http_response_code(404);
+        exit('Document not found');
+    }
+
+    Proforma::streamPdf($proforma);
 }

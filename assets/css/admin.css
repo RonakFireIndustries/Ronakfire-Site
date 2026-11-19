@@ -1029,6 +1029,57 @@ a.admin-stat:hover {
 .admin-option-list li { font-size: .69rem; color: var(--muted); }
 .admin-option-list li::before { content: "·"; margin-right: 6px; color: var(--orange); }
 
+.admin-enquiry-config dd { display: grid; gap: 10px; }
+.admin-enquiry-config p { margin: 0; }
+.admin-enquiry-config__item { padding: 10px 12px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 9px; }
+.admin-enquiry-config__item > strong { display: block; font-size: .8rem; }
+.admin-enquiry-config__item > small { display: block; margin-top: 2px; font-size: .7rem; color: var(--muted); }
+
+.admin-proforma-lines { display: grid; gap: 10px; margin-bottom: 10px; }
+.admin-proforma-line {
+    display: grid;
+    grid-template-columns: minmax(180px, 2fr) minmax(100px, 1fr) 70px 100px 82px 100px 32px;
+    align-items: end;
+    gap: 8px;
+    padding: 10px;
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: 9px;
+}
+.admin-proforma-line .admin-field > span { font-size: .66rem; }
+.admin-proforma-line .admin-field input { min-height: 36px; padding: 7px 9px; font-size: .78rem; }
+.admin-proforma-line__total { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.admin-proforma-line__total span { font-size: .66rem; font-weight: 600; color: var(--muted); }
+.admin-proforma-line__total strong { font-size: .8rem; white-space: nowrap; }
+.admin-proforma-line .admin-icon-btn { margin-bottom: 0; }
+.admin-proforma-meta { margin-top: 16px; }
+.admin-proforma-summary {
+    display: grid;
+    justify-content: end;
+    gap: 6px;
+    margin-top: 16px;
+    padding: 12px 14px;
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    background: var(--surface-2);
+}
+.admin-proforma-summary > div { display: flex; justify-content: space-between; gap: 28px; font-size: .78rem; }
+.admin-proforma-summary > div span { color: var(--muted); }
+.admin-proforma-summary .is-total { padding-top: 7px; border-top: 1px solid var(--line); font-size: .9rem; }
+.admin-form-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px; }
+.admin-proforma-history { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--line); }
+.admin-proforma-history h3 { margin: 0 0 10px; font-size: .74rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.admin-proforma-history ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+.admin-proforma-history li { display: flex; flex-direction: column; gap: 2px; padding: 9px 11px; border: 1px solid var(--line); border-radius: 8px; font-size: .74rem; }
+.admin-proforma-history li span { color: var(--muted); }
+.admin-proforma-history li small { color: var(--danger); }
+
+@media (max-width: 1100px) {
+    .admin-proforma-line { grid-template-columns: minmax(160px, 2fr) minmax(90px, 1fr) 65px 90px 75px; }
+    .admin-proforma-line__total { grid-column: 1 / -1; flex-direction: row; align-items: center; justify-content: space-between; }
+    .admin-proforma-line .admin-icon-btn { grid-column: 5; grid-row: 1; }
+}
+
 .admin-quote-product {
     display: flex;
     align-items: center;

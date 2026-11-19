@@ -39,7 +39,25 @@
                                 <div class="quote-request__details">
                                     <span><small>Quantity</small><strong><?= (int) $enquiry['qty'] ?></strong></span>
                                     <?php if (!empty($enquiry['configuration'])): ?>
-                                        <span class="quote-request__config"><small>Configuration</small><strong><?= e($enquiry['configuration']) ?></strong></span>
+                                        <?php $config = enquiry_configuration((string) $enquiry['configuration']); ?>
+                                        <span class="quote-request__config">
+                                            <small>Configuration</small>
+                                            <strong>
+                                                <?php if ($config['text'] !== ''): ?>
+                                                    <?= nl2br(e($config['text'])) ?>
+                                                <?php elseif ($config['items']): ?>
+                                                    <?php foreach ($config['items'] as $index => $item): ?>
+                                                        <?php if ($index): ?><br><?php endif; ?>
+                                                        <?= e($item['name'] ?: 'Item') ?> × <?= $item['qty'] ?>
+                                                        <?php if ($item['options']): ?>
+                                                            <span class="quote-request__config-options"><?= e(implode(' · ', $item['options'])) ?></span>
+                                                        <?php endif; ?>
+                                                    <?php endforeach; ?>
+                                                <?php else: ?>
+                                                    &mdash;
+                                                <?php endif; ?>
+                                            </strong>
+                                        </span>
                                     <?php endif; ?>
                                 </div>
                                 <?php if (!empty($enquiry['message'])): ?>

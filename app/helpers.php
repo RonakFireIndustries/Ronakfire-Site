@@ -248,6 +248,18 @@ function render(string $view, array $data = [], string $layout = 'layout'): void
     require $layoutFile;
 }
 
+function render_to_string(string $view, array $data = []): string
+{
+    ob_start();
+    try {
+        render($view, $data, '');
+        return (string) ob_get_clean();
+    } catch (Throwable $e) {
+        ob_end_clean();
+        throw $e;
+    }
+}
+
 function partial(string $name, array $data = []): void
 {
     $file = APP_PATH . '/views/partials/' . $name . '.php';
@@ -336,6 +348,32 @@ function set_setting(string $key, string $value): void
 function store_min_order_paise(): int
 {
     return (int) setting('min_order_paise', config('store.min_order_paise', 0));
+}
+
+/**
+ * Allocate a unique order number. Used by checkout and by admin-created
+ * proformas so both document types share one numbering scheme.
+ */
+function generate_order_no(): string
+{
+    for ($i = 0; $i < 8; $i++) {
+        $candidate = 'RF-' . date('Ymd') . '-' . random_int(100000, 999999);
+        if (!db()->one('SELECT id FROM orders WHERE order_no = ?', [$candidate])) {
+            return $candidate;
+        }
+    }
+    throw new RuntimeException('Could not allocate an order number.');
+}
+
+function generate_proforma_no(): string
+{
+    for ($i = 0; $i < 8; $i++) {
+        $candidate = 'PF-' . date('Ymd') . '-' . strtoupper(bin2hex(random_bytes(3)));
+        if (!db()->one('SELECT id FROM proformas WHERE proforma_no = ?', [$candidate])) {
+            return $candidate;
+        }
+    }
+    throw new RuntimeException('Could not allocate a proforma number.');
 }
 
 function parse_money_to_paise(mixed $value): int
@@ -453,6 +491,69 @@ function specs_to_text(array $specs): string
         $lines[] = ($spec['label'] ?? '') . ': ' . ($spec['value'] ?? '');
     }
     return implode("\n", $lines);
+}
+
+/* -------------------------------------------------------------------------
+   Enquiry configuration
+   ------------------------------------------------------------------------- */
+
+/**
+ * Normalise a stored enquiry configuration for display.
+ *
+ * Cart quote requests store a JSON payload with a PO number, notes and line
+ * items. Single-product quote requests store the chosen options as plain
+ * text. Views use this helper so raw JSON is never printed to admins or
+ * customers.
+ *
+ * @return array{po_number:string,notes:string,items:list<array{name:string,sku:string,qty:int,unit_price_paise:int,line_total_paise:int,options:list<string>}>,text:string}
+ */
+function enquiry_configuration(string $configuration): array
+{
+    $raw = trim($configuration);
+    $result = [
+        'po_number' => '',
+        'notes' => '',
+        'items' => [],
+        'text' => '',
+    ];
+
+    if ($raw === '') {
+        return $result;
+    }
+
+    $decoded = json_decode($raw, true);
+    if (is_array($decoded) && isset($decoded['items']) && is_array($decoded['items'])) {
+        $result['po_number'] = trim((string) ($decoded['po_number'] ?? ''));
+        $result['notes'] = trim((string) ($decoded['notes'] ?? ''));
+
+        foreach ($decoded['items'] as $item) {
+            if (!is_array($item)) {
+                continue;
+            }
+            $options = $item['options'] ?? [];
+            $summary = (is_array($options) && is_array($options['summary'] ?? null)) ? $options['summary'] : [];
+            $optionLines = [];
+            foreach ($summary as $line) {
+                $line = trim((string) $line);
+                if ($line !== '') {
+                    $optionLines[] = $line;
+                }
+            }
+            $result['items'][] = [
+                'name' => trim((string) ($item['product_name'] ?? '')),
+                'sku' => trim((string) ($item['sku'] ?? '')),
+                'qty' => (int) ($item['qty'] ?? 0),
+                'unit_price_paise' => (int) ($item['unit_price_paise'] ?? 0),
+                'line_total_paise' => (int) ($item['line_total_paise'] ?? 0),
+                'options' => $optionLines,
+            ];
+        }
+
+        return $result;
+    }
+
+    $result['text'] = $raw;
+    return $result;
 }
 
 /* -------------------------------------------------------------------------

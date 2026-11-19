@@ -355,6 +355,116 @@
     }
 
     /* ----------------------------------------------------------------------
+       Proforma editor (quote request page)
+       ---------------------------------------------------------------------- */
+
+    function initProformaEditor() {
+        var form = qs('[data-proforma-form]');
+        var linesWrap = qs('[data-proforma-lines]', form || document);
+        if (!form || !linesWrap) {
+            return;
+        }
+        var template = qs('#proformaLineTemplate', form);
+        var nextIndex = qsa('[data-proforma-line]', linesWrap).length;
+
+        function numberValue(input) {
+            var value = parseFloat(input && input.value);
+            return isFinite(value) ? value : 0;
+        }
+
+        function money(value) {
+            try {
+                return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(value);
+            } catch (error) {
+                return 'Rs. ' + value.toFixed(2);
+            }
+        }
+
+        function setText(selector, value) {
+            var node = qs(selector, form);
+            if (node) {
+                node.textContent = value;
+            }
+        }
+
+        function recalculate() {
+            var subtotal = 0;
+            var gst = 0;
+
+            qsa('[data-proforma-line]', linesWrap).forEach(function (row) {
+                var qty = Math.max(0, numberValue(qs('[data-line-qty]', row)));
+                var price = Math.max(0, numberValue(qs('[data-line-price]', row)));
+                var rate = Math.max(0, numberValue(qs('[data-line-gst]', row)));
+                var taxable = qty * price;
+                var tax = taxable * rate / 100;
+                subtotal += taxable;
+                gst += tax;
+
+                var totalNode = qs('[data-line-total]', row);
+                if (totalNode) {
+                    totalNode.textContent = money(taxable + tax);
+                }
+            });
+
+            var freight = Math.max(0, numberValue(qs('[data-proforma-freight]', form)));
+            var discount = Math.max(0, numberValue(qs('[data-proforma-discount]', form)));
+            var grand = Math.max(0, subtotal + gst + freight - discount);
+
+            setText('[data-summary-subtotal]', money(subtotal));
+            setText('[data-summary-gst]', money(gst));
+            setText('[data-summary-freight]', money(freight));
+            setText('[data-summary-discount]', '- ' + money(discount));
+            setText('[data-summary-total]', money(grand));
+        }
+
+        function bindRow(row) {
+            qsa('input', row).forEach(function (input) {
+                input.addEventListener('input', recalculate);
+            });
+            var remove = qs('[data-remove-line]', row);
+            if (remove) {
+                remove.addEventListener('click', function () {
+                    if (row.parentNode) {
+                        row.parentNode.removeChild(row);
+                    }
+                    recalculate();
+                });
+            }
+        }
+
+        qsa('[data-proforma-line]', linesWrap).forEach(bindRow);
+
+        var add = qs('[data-add-line]', form);
+        if (add && template) {
+            add.addEventListener('click', function () {
+                var html = template.innerHTML.replace(/__INDEX__/g, String(nextIndex++));
+                var holder = document.createElement('div');
+                holder.innerHTML = html.trim();
+                var row = holder.firstElementChild;
+                linesWrap.appendChild(row);
+                bindRow(row);
+                recalculate();
+            });
+        }
+
+        ['[data-proforma-freight]', '[data-proforma-discount]'].forEach(function (selector) {
+            var input = qs(selector, form);
+            if (input) {
+                input.addEventListener('input', recalculate);
+            }
+        });
+
+        form.addEventListener('submit', function (event) {
+            if (!qsa('[data-proforma-line]', linesWrap).length) {
+                event.preventDefault();
+                window.alert('Add at least one line to the proforma.');
+            }
+        });
+
+        recalculate();
+    }
+
+    /* ----------------------------------------------------------------------
        Boot
        ---------------------------------------------------------------------- */
 
@@ -365,5 +475,6 @@
         initGroupsEditor();
         initBundleEditor();
         initProductForm();
+        initProformaEditor();
     });
 })();

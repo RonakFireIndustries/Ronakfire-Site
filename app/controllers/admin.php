@@ -9,6 +9,9 @@ declare(strict_types=1);
 
 use App\Auth;
 use App\Catalog;
+use App\Mailer;
+use App\Proforma;
+use App\ProformaPdf;
 
 /* -------------------------------------------------------------------------
    Shared helpers
@@ -1355,6 +1358,45 @@ function ctrl_admin_enquiries(): void
     ]);
 }
 
+function admin_render_enquiry(array $enquiry, array $extra = []): void
+{
+    $id = (int) $enquiry['id'];
+    $product = $enquiry['product_id'] ? Catalog::findById((int) $enquiry['product_id']) : null;
+    $customer = $enquiry['customer_id'] ? admin_find_customer((int) $enquiry['customer_id']) : null;
+
+    $proforma = db()->one(
+        'SELECT * FROM proformas WHERE enquiry_id = ? ORDER BY id DESC LIMIT 1',
+        [$id]
+    );
+    $order = $proforma ? db()->one('SELECT * FROM orders WHERE id = ?', [(int) $proforma['order_id']]) : null;
+    $items = $order ? db()->all('SELECT * FROM order_items WHERE order_id = ? ORDER BY id', [(int) $order['id']]) : [];
+
+    $lines = $extra['proforma_lines'] ?? Proforma::linesForEnquiry($enquiry, $order, $items);
+    $form = $extra['proforma_form'] ?? Proforma::defaultForm($enquiry, $customer, $proforma, $lines);
+    $errors = $extra['proforma_errors'] ?? [];
+    $sends = $proforma ? db()->all(
+        'SELECT ps.*, au.name AS sent_by_name
+         FROM proforma_sends ps LEFT JOIN admin_users au ON au.id = ps.sent_by
+         WHERE ps.proforma_id = ? ORDER BY ps.sent_at DESC, ps.id DESC',
+        [(int) $proforma['id']]
+    ) : [];
+
+    admin_render('enquiry', array_merge([
+        'pageTitle' => 'Quote request #' . $enquiry['id'] . ' | Ronak Fire admin',
+        'adminNav' => 'enquiries',
+        'adminTitle' => 'Quote request #' . $enquiry['id'],
+        'enquiry' => $enquiry,
+        'product' => $product,
+        'customer' => $customer,
+        'proforma' => $proforma,
+        'proformaOrder' => $order,
+        'proformaLines' => $lines,
+        'proformaForm' => $form,
+        'proformaErrors' => $errors,
+        'proformaSends' => $sends,
+    ]));
+}
+
 function ctrl_admin_enquiry(array $params): void
 {
     Auth::requireAdmin();
@@ -1370,17 +1412,140 @@ function ctrl_admin_enquiry(array $params): void
         return;
     }
 
-    $product = $enquiry['product_id'] ? Catalog::findById((int) $enquiry['product_id']) : null;
-    $customer = $enquiry['customer_id'] ? admin_find_customer((int) $enquiry['customer_id']) : null;
+    admin_render_enquiry($enquiry);
+}
 
-    admin_render('enquiry', [
-        'pageTitle' => 'Quote request #' . $enquiry['id'] . ' | Ronak Fire admin',
-        'adminNav' => 'enquiries',
-        'adminTitle' => 'Quote request #' . $enquiry['id'],
-        'enquiry' => $enquiry,
-        'product' => $product,
-        'customer' => $customer,
+function ctrl_admin_enquiry_proforma(array $params): void
+{
+    Auth::requireAdmin();
+    require_csrf();
+
+    $id = admin_url_id($params);
+    $enquiry = $id > 0 ? admin_find_enquiry($id) : null;
+    if (!$enquiry) {
+        flash('error', 'Enquiry not found.');
+        redirect('/admin/enquiries');
+    }
+
+    $input = Proforma::normalize($_POST);
+    if ($input['errors']) {
+        admin_render_enquiry($enquiry, [
+            'proforma_lines' => $input['lines'],
+            'proforma_form' => array_merge($input['meta'], ['lines' => $input['lines']]),
+            'proforma_errors' => $input['errors'],
+        ]);
+        return;
+    }
+
+    $totals = Proforma::calculate(
+        $input['lines'],
+        (int) $input['meta']['freight_paise'],
+        (int) $input['meta']['discount_paise']
+    );
+
+    try {
+        $customerData = Proforma::customerForEnquiry($enquiry, $input['meta']['email']);
+        $result = Proforma::persist(
+            $enquiry,
+            ['meta' => $input['meta'], 'totals' => $totals],
+            $customerData['customer'],
+            (int) (Auth::admin()['id'] ?? 0)
+        );
+    } catch (Throwable $e) {
+        error_log('Proforma creation failed: ' . $e->getMessage());
+        admin_render_enquiry($enquiry, [
+            'proforma_lines' => $input['lines'],
+            'proforma_form' => array_merge($input['meta'], ['lines' => $input['lines']]),
+            'proforma_errors' => ['The proforma could not be saved. Please try again or contact support.'],
+        ]);
+        return;
+    }
+
+    $proforma = $result['proforma'];
+    $proformaNo = (string) $proforma['proforma_no'];
+    $now = date('Y-m-d H:i:s');
+    $pdfPath = ProformaPdf::generate($result);
+    $absolutePdf = $pdfPath ? Proforma::pdfPath($pdfPath) : null;
+
+    if ($pdfPath) {
+        db()->update('proformas', [
+            'pdf_path' => $pdfPath,
+            'updated_at' => $now,
+        ], 'id = :id', ['id' => (int) $proforma['id']]);
+    }
+
+    $sendId = db()->insert('proforma_sends', [
+        'proforma_id' => (int) $proforma['id'],
+        'sent_at' => $now,
+        'sent_by' => (int) (Auth::admin()['id'] ?? 0) ?: null,
+        'email' => $input['meta']['email'],
+        'total_paise' => (int) $proforma['grand_total_paise'],
+        'pdf_path' => $pdfPath,
+        'status' => 'pending',
+        'created_at' => $now,
     ]);
+
+    $error = '';
+    $sent = false;
+    if (!$absolutePdf) {
+        $error = 'The PDF could not be generated.';
+    } else {
+        $body = render_to_string('emails/proforma', [
+            'proforma' => $proforma,
+            'orderNo' => (string) ($result['order_no'] ?? ''),
+            'customer' => $customerData['customer'],
+            'tempPassword' => $customerData['temp_password'] ?? '',
+        ]);
+        $sent = Mailer::sendAttachment(
+            $input['meta']['email'],
+            'Proforma invoice ' . $proformaNo . ' — Ronak Fire India',
+            $body,
+            $absolutePdf,
+            'Proforma-' . $proformaNo . '.pdf'
+        );
+        if (!$sent) {
+            $error = 'Email delivery failed. The PDF is saved and can be downloaded from this page.';
+            if (!empty($customerData['temp_password'])) {
+                $error .= ' Customer login: ' . $input['meta']['email'] . ' / temporary password ' . $customerData['temp_password'] . '.';
+            }
+        }
+    }
+
+    db()->update('proforma_sends', [
+        'status' => $sent ? 'sent' : 'failed',
+        'error' => $sent ? null : $error,
+    ], 'id = :id', ['id' => $sendId]);
+
+    if ($sent) {
+        db()->update('proformas', ['last_sent_at' => $now], 'id = :id', ['id' => (int) $proforma['id']]);
+        flash('success', 'Proforma ' . $proformaNo . ' created and emailed to ' . $input['meta']['email'] . '.');
+    } else {
+        flash('error', $error);
+    }
+
+    redirect('/admin/enquiries/' . $id);
+}
+
+function ctrl_admin_enquiry_proforma_pdf(array $params): void
+{
+    Auth::requireAdmin();
+    $id = admin_url_id($params);
+    $enquiry = $id > 0 ? admin_find_enquiry($id) : null;
+    if (!$enquiry) {
+        http_response_code(404);
+        exit('Enquiry not found');
+    }
+
+    $proforma = db()->one(
+        'SELECT * FROM proformas WHERE enquiry_id = ? ORDER BY id DESC LIMIT 1',
+        [$id]
+    );
+    if (!$proforma) {
+        http_response_code(404);
+        exit('Proforma not found');
+    }
+
+    Proforma::streamPdf($proforma);
 }
 
 function ctrl_admin_enquiry_status(array $params): void

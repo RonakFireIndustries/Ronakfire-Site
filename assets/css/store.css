@@ -4228,6 +4228,47 @@ code {
   font-size: 0.76rem;
   font-weight: 500;
 }
+.quote-request__config-options {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.7rem;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--muted);
+}
+.document-list {
+  display: grid;
+  gap: 12px;
+}
+.document-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.document-item h3 {
+  margin: 0 0 3px;
+  font-size: 0.86rem;
+}
+.document-item p {
+  margin: 0;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+.document-item__actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+.document-item__actions strong {
+  font-size: 0.86rem;
+}
 .quote-request__message {
   margin: 10px 0 0;
   padding-top: 10px;

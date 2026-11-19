@@ -63,6 +63,7 @@ $documentLabel = $proforma ? 'Proforma invoice' : 'Tax invoice';
                 <div><dt>Order date</dt><dd><?= e(format_date($order['placed_at'])) ?></dd></div>
                 <div><dt>Customer code</dt><dd><?= e($order['customer_code'] ?: '—') ?></dd></div>
                 <div><dt>PO number</dt><dd><?= e($order['po_number'] ?: '—') ?></dd></div>
+                <?php if (!empty($order['valid_until'])): ?><div><dt>Valid until</dt><dd><?= e(format_date((string) $order['valid_until'], 'd M Y')) ?></dd></div><?php endif; ?>
                 <div><dt>Place of supply</dt><dd><?= e($placeOfSupply) ?></dd></div>
                 <div><dt>Payment</dt><dd>On invoice</dd></div>
             </dl>
@@ -129,6 +130,7 @@ $documentLabel = $proforma ? 'Proforma invoice' : 'Tax invoice';
             <div><dt>Subtotal</dt><dd><?= money((int) $order['subtotal_paise']) ?></dd></div>
             <div><dt>GST</dt><dd><?= money((int) $order['gst_paise']) ?></dd></div>
             <div><dt>Freight</dt><dd><?= (int) $order['freight_paise'] > 0 ? money((int) $order['freight_paise']) : 'To be confirmed' ?></dd></div>
+            <?php if ((int) ($order['discount_paise'] ?? 0) > 0): ?><div><dt>Discount</dt><dd>&minus; <?= money((int) $order['discount_paise']) ?></dd></div><?php endif; ?>
             <div class="is-total"><dt>Grand total</dt><dd><?= money((int) $order['grand_total_paise']) ?></dd></div>
         </dl>
     </section>

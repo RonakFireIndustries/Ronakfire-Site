@@ -120,7 +120,7 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 
 .invoice__parties {
     display: grid;
-    grid-template-columns: 1.15fr 1fr 1fr;
+    grid-template-columns: 1fr 1fr;
     gap: 14px;
     padding: 12px 0;
     border-bottom: 1px solid var(--line);
@@ -136,10 +136,38 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 }
 .invoice__parties strong { display: block; font-size: 10.5px; color: var(--ink); }
 .invoice__parties p { margin: 0 0 2px; font-size: 9.5px; line-height: 1.5; color: var(--text); }
-.invoice__meta dl { margin: 0; display: grid; gap: 2px; }
-.invoice__meta dl > div { display: flex; justify-content: space-between; gap: 10px; font-size: 9px; }
-.invoice__meta dt { color: var(--muted); }
-.invoice__meta dd { margin: 0; font-weight: 600; color: var(--ink); text-align: right; }
+
+/* Document facts in two label/value columns (table renders reliably in PDF). */
+.invoice__meta {
+    grid-column: 1 / -1;
+    padding-top: 8px;
+    border-top: 1px dashed var(--line);
+}
+.invoice__meta table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+}
+.invoice__meta th,
+.invoice__meta td {
+    padding: 1px 6px;
+    font-size: 9px;
+    line-height: 1.5;
+    text-align: left;
+    vertical-align: top;
+}
+.invoice__meta th {
+    width: 18%;
+    font-weight: 400;
+    color: var(--muted);
+}
+.invoice__meta td {
+    width: 32%;
+    font-weight: 600;
+    color: var(--ink);
+}
+.invoice__meta th:first-child,
+.invoice__meta td:first-child { padding-left: 0; }
 
 .invoice__items { margin-top: 12px; }
 .invoice__items thead th {
@@ -271,6 +299,8 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
     .invoice__header { flex-direction: column; }
     .invoice__title { text-align: left; }
     .invoice__parties { grid-template-columns: minmax(0, 1fr); }
+    .invoice__meta th { width: 24%; }
+    .invoice__meta td { width: 26%; }
     .invoice__totals { grid-template-columns: minmax(0, 1fr); }
     .invoice__items { min-width: 620px; }
     .invoice__footer { flex-direction: column; gap: 2px; }

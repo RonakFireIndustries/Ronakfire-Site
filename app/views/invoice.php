@@ -21,6 +21,23 @@ foreach ($taxGroups as $group) {
     $totalTax += $group['tax'];
 }
 $documentLabel = $proforma ? 'Proforma invoice' : 'Tax invoice';
+
+/* Document facts are rendered as label/value pairs in two columns. */
+$metaPairs = [
+    ['Order no.', (string) ($order['order_no'] ?? '')],
+    ['Order date', format_date($order['placed_at'])],
+    ['Customer code', (string) ($order['customer_code'] ?? '') ?: '—'],
+    ['PO number', (string) ($order['po_number'] ?? '') ?: '—'],
+];
+if (!empty($order['valid_until'])) {
+    $metaPairs[] = ['Valid until', format_date((string) $order['valid_until'], 'd M Y')];
+}
+$metaPairs[] = ['Place of supply', $placeOfSupply];
+$metaPairs[] = ['Payment', 'On invoice'];
+if (count($metaPairs) % 2 !== 0) {
+    $metaPairs[] = ['', ''];
+}
+$metaRows = array_chunk($metaPairs, 2);
 ?>
 <main class="invoice">
     <header class="invoice__header">
@@ -58,15 +75,18 @@ $documentLabel = $proforma ? 'Proforma invoice' : 'Tax invoice';
             <p><?= e($shipping['phone'] ?? '') ?></p>
         </div>
         <div class="invoice__meta">
-            <dl>
-                <div><dt>Order no.</dt><dd><?= e($order['order_no']) ?></dd></div>
-                <div><dt>Order date</dt><dd><?= e(format_date($order['placed_at'])) ?></dd></div>
-                <div><dt>Customer code</dt><dd><?= e($order['customer_code'] ?: '—') ?></dd></div>
-                <div><dt>PO number</dt><dd><?= e($order['po_number'] ?: '—') ?></dd></div>
-                <?php if (!empty($order['valid_until'])): ?><div><dt>Valid until</dt><dd><?= e(format_date((string) $order['valid_until'], 'd M Y')) ?></dd></div><?php endif; ?>
-                <div><dt>Place of supply</dt><dd><?= e($placeOfSupply) ?></dd></div>
-                <div><dt>Payment</dt><dd>On invoice</dd></div>
-            </dl>
+            <table>
+                <tbody>
+                <?php foreach ($metaRows as $row): ?>
+                    <tr>
+                        <th><?= e($row[0][0]) ?></th>
+                        <td><?= e($row[0][1]) ?></td>
+                        <th><?= e($row[1][0]) ?></th>
+                        <td><?= e($row[1][1]) ?></td>
+                    </tr>
+                <?php endforeach; ?>
+                </tbody>
+            </table>
         </div>
     </section>
 

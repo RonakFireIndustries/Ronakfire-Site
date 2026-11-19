@@ -42,7 +42,7 @@ function ctrl_contact(): void
 {
     render('marketing/contact', [
         'pageTitle' => 'Contact Ronak Fire India | Sales, Factory & Corporate Office',
-        'metaDescription' => 'Contact Ronak Fire India for fire safety equipment pricing, project quotations and technical support. Corporate office in Bhayandar East and factory in Palghar, Maharashtra.',
+        'metaDescription' => 'Contact Ronak Fire India for fire safety equipment pricing, project quotations and technical support. Corporate office in Mira Road East and factory in Palghar, Maharashtra.',
         'canonical' => abs_url('/contact'),
         'activeNav' => 'contact',
     ]);

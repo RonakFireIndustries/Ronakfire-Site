@@ -119,11 +119,24 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 }
 
 .invoice__parties {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 14px;
     padding: 12px 0;
     border-bottom: 1px solid var(--line);
+}
+/* Table keeps Billed to / Shipped to side by side in the PDF (dompdf
+   does not lay out CSS grid, and flex support is inconsistent). */
+.invoice__parties-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+}
+.invoice__parties-table > tbody > tr > td {
+    width: 50%;
+    padding: 0 14px 0 0;
+    vertical-align: top;
+}
+.invoice__parties-table > tbody > tr > td:last-child {
+    padding-right: 0;
+    padding-left: 14px;
 }
 .invoice__parties h2 {
     margin-bottom: 5px;
@@ -139,7 +152,7 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 
 /* Document facts in two label/value columns (table renders reliably in PDF). */
 .invoice__meta {
-    grid-column: 1 / -1;
+    margin-top: 8px;
     padding-top: 8px;
     border-top: 1px dashed var(--line);
 }
@@ -298,7 +311,14 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
     .invoice { width: 100%; min-height: 0; padding: 22px 18px; }
     .invoice__header { flex-direction: column; }
     .invoice__title { text-align: left; }
-    .invoice__parties { grid-template-columns: minmax(0, 1fr); }
+    .invoice__parties-table,
+    .invoice__parties-table tbody,
+    .invoice__parties-table tr,
+    .invoice__parties-table td { display: block; width: 100%; }
+    .invoice__parties-table > tbody > tr > td,
+    .invoice__parties-table > tbody > tr > td:last-child {
+        padding: 0 0 10px;
+    }
     .invoice__meta th { width: 24%; }
     .invoice__meta td { width: 26%; }
     .invoice__totals { grid-template-columns: minmax(0, 1fr); }

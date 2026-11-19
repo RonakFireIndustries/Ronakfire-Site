@@ -35,7 +35,7 @@ return [
         'support_email' => 'sales@ronakfire.com',
         'support_phone' => '+91 93239 47512',
         'support_phone_href' => '+919323947512',
-        'address' => 'E001, Kasturi Vandana Complex, Goddev Phatak Road, Bhayandar East, Maharashtra 401105',
+        'address' => 'Shop No. 118, 1st Floor, Vasudev Sky High, Kanakia Rd, Om Ram Sagar Phase 1, Beverly Park, Mira Road East, Mira Bhayandar, Maharashtra 401105',
         'currency' => 'INR',
         'gstin' => '', // e.g. 27AABCR1234F1Z5
         'min_order_paise' => 500000, // ₹5,000

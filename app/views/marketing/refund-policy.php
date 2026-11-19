@@ -142,7 +142,7 @@ $sections = [
                 <p>Send refund or cancellation requests with your order or invoice number to:</p>
                 <ul class="legal-contact">
                     <li><strong>Ronak Fire India Pvt. Ltd.</strong></li>
-                    <li><strong>Address:</strong> E001, Kasturi Vandana Complex, Off Kasturi Vandana Industrial Estate, Goddev Phatak Road, Bhayandar East, Maharashtra 401105</li>
+                    <li><strong>Address:</strong> Shop No. 118, 1st Floor, Vasudev Sky High, Kanakia Rd, Om Ram Sagar Phase 1, Beverly Park, Mira Road East, Mira Bhayandar, Maharashtra 401105</li>
                     <li><strong>Phone:</strong> <a href="tel:+919323947512">+91 93239 47512</a></li>
                     <li><strong>Email:</strong> <a href="mailto:info@ronakfire.com">info@ronakfire.com</a> / <a href="mailto:sales@ronakfire.com">sales@ronakfire.com</a></li>
                     <li><strong>Contact page:</strong> <a href="/contact">ronakfire.com/contact</a></li>

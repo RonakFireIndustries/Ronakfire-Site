@@ -305,7 +305,7 @@ $summary = $initialQuote['summary'] ?? [];
                     </div>
                     <div class="info-card">
                         <h3><?= icon('shield') ?> Warranty &amp; support</h3>
-                        <p><?= e($product['warranty'] ?: 'Standard warranty applies.') ?> Service and spares are supported from our Bhayandar head office.</p>
+                        <p><?= e($product['warranty'] ?: 'Standard warranty applies.') ?> Service and spares are supported from our Mira Road head office.</p>
                     </div>
                     <div class="info-card">
                         <h3><?= icon('phone') ?> Need help specifying?</h3>

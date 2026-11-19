@@ -3,10 +3,10 @@ $salesPhone = setting('support_phone', config('store.support_phone'));
 $salesPhoneHref = setting('support_phone_href', config('store.support_phone_href'));
 $salesEmail = setting('support_email', config('store.support_email'));
 
-$corporateAddress = 'E001, Kasturi Vandana Complex, Off Kasturi Vandana Industrial Estate, Near Hero Asian Motor, Goddev Phatak Road, Bhayandar East, Maharashtra 401105';
+$corporateAddress = 'Shop No. 118, 1st Floor, Vasudev Sky High, Kanakia Rd, Om Ram Sagar Phase 1, Beverly Park, Mira Road East, Mira Bhayandar, Maharashtra 401105';
 $factoryAddress = 'Plot No. 62 & 63, S. No. 984, Old Satpari Road, Behind Anand Arc, Village Shirgaon, Palghar (W), District Palghar 401404';
 
-$corporateMap = 'https://www.google.com/maps/search/?api=1&query=' . rawurlencode('Kasturi Vandana Complex, Goddev Phatak Road, Bhayandar East, Maharashtra 401105');
+$corporateMap = 'https://www.google.com/maps/search/?api=1&query=' . rawurlencode('Vasudev Sky High, Kanakia Rd, Mira Road East, Mira Bhayandar, Maharashtra 401105');
 $factoryMap = 'https://www.google.com/maps/search/?api=1&query=' . rawurlencode('Shirgaon, Palghar West, Maharashtra 401404');
 ?>
 <section class="page-hero">

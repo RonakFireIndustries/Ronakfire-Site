@@ -59,21 +59,27 @@ $metaRows = array_chunk($metaPairs, 2);
     </header>
 
     <section class="invoice__parties">
-        <div>
-            <h2>Billed to</h2>
-            <strong><?= e($billing['company_name'] ?? $order['company_name']) ?></strong>
-            <p><?= e($billing['contact_name'] ?? '') ?></p>
-            <p><?= e($billing['address_line1'] ?? '') ?><?php if (!empty($billing['address_line2'])): ?><br><?= e($billing['address_line2']) ?><?php endif; ?><br><?= e($billing['city'] ?? '') ?>, <?= e($billing['state'] ?? '') ?> <?= e($billing['pincode'] ?? '') ?></p>
-            <p><?= e($billing['phone'] ?? '') ?> · <?= e($billing['email'] ?? '') ?></p>
-            <?php if (!empty($billing['gstin'])): ?><p><strong>GSTIN:</strong> <?= e($billing['gstin']) ?></p><?php endif; ?>
-        </div>
-        <div>
-            <h2>Shipped to</h2>
-            <strong><?= e($shipping['company_name'] ?? $order['company_name']) ?></strong>
-            <p><?= e($shipping['contact_name'] ?? '') ?></p>
-            <p><?= e($shipping['address_line1'] ?? '') ?><?php if (!empty($shipping['address_line2'])): ?><br><?= e($shipping['address_line2']) ?><?php endif; ?><br><?= e($shipping['city'] ?? '') ?>, <?= e($shipping['state'] ?? '') ?> <?= e($shipping['pincode'] ?? '') ?></p>
-            <p><?= e($shipping['phone'] ?? '') ?></p>
-        </div>
+        <table class="invoice__parties-table">
+            <tbody>
+            <tr>
+                <td>
+                    <h2>Billed to</h2>
+                    <strong><?= e($billing['company_name'] ?? $order['company_name']) ?></strong>
+                    <p><?= e($billing['contact_name'] ?? '') ?></p>
+                    <p><?= e($billing['address_line1'] ?? '') ?><?php if (!empty($billing['address_line2'])): ?><br><?= e($billing['address_line2']) ?><?php endif; ?><br><?= e($billing['city'] ?? '') ?>, <?= e($billing['state'] ?? '') ?> <?= e($billing['pincode'] ?? '') ?></p>
+                    <p><?= e($billing['phone'] ?? '') ?> · <?= e($billing['email'] ?? '') ?></p>
+                    <?php if (!empty($billing['gstin'])): ?><p><strong>GSTIN:</strong> <?= e($billing['gstin']) ?></p><?php endif; ?>
+                </td>
+                <td>
+                    <h2>Shipped to</h2>
+                    <strong><?= e($shipping['company_name'] ?? $order['company_name']) ?></strong>
+                    <p><?= e($shipping['contact_name'] ?? '') ?></p>
+                    <p><?= e($shipping['address_line1'] ?? '') ?><?php if (!empty($shipping['address_line2'])): ?><br><?= e($shipping['address_line2']) ?><?php endif; ?><br><?= e($shipping['city'] ?? '') ?>, <?= e($shipping['state'] ?? '') ?> <?= e($shipping['pincode'] ?? '') ?></p>
+                    <p><?= e($shipping['phone'] ?? '') ?></p>
+                </td>
+            </tr>
+            </tbody>
+        </table>
         <div class="invoice__meta">
             <table>
                 <tbody>
